@@ -2,7 +2,7 @@
 Flask application for PYQ Management System
 Main API endpoints for admin upload and user filtering
 """
-from flask import Flask, request, jsonify, send_file
+from flask import Flask, request, jsonify, send_file, redirect
 from flask_cors import CORS
 import os
 import uuid
@@ -233,6 +233,10 @@ def view_pdf(file_id):
         if not file_data:
             return jsonify({'success': False, 'error': 'File not found'}), 404
         
+        # If it's a Drive URL, redirect to it
+        if file_data['file_path'].startswith('http'):
+            return redirect(file_data['file_path'])
+        
         pdf_path = os.path.join(PDF_STORAGE_PATH, file_data['file_path'])
         
         if not os.path.exists(pdf_path):
@@ -249,6 +253,10 @@ def download_pdf(file_id):
         file_data = get_file_by_id(file_id)
         if not file_data:
             return jsonify({'success': False, 'error': 'File not found'}), 404
+        
+        # If it's a Drive URL, redirect to it
+        if file_data['file_path'].startswith('http'):
+            return redirect(file_data['file_path'])
         
         pdf_path = os.path.join(PDF_STORAGE_PATH, file_data['file_path'])
         
