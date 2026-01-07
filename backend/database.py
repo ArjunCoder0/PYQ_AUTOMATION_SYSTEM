@@ -1,0 +1,150 @@
+"""
+Database initialization and helper functions
+"""
+import sqlite3
+from datetime import datetime
+from config import DATABASE_PATH
+
+def get_db_connection():
+    """Create and return a database connection"""
+    conn = sqlite3.connect(DATABASE_PATH)
+    conn.row_factory = sqlite3.Row  # Return rows as dictionaries
+    return conn
+
+def init_database():
+    """Initialize database and create tables if they don't exist"""
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    
+    # Create pyq_files table
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS pyq_files (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            degree TEXT NOT NULL,
+            branch TEXT NOT NULL,
+            semester INTEGER NOT NULL,
+            subject_code TEXT NOT NULL,
+            subject_name TEXT NOT NULL,
+            exam_type TEXT NOT NULL,
+            exam_year INTEGER NOT NULL,
+            file_path TEXT NOT NULL,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )
+    ''')
+    
+    # Create indexes for faster queries
+    cursor.execute('''
+        CREATE INDEX IF NOT EXISTS idx_exam_session 
+        ON pyq_files(exam_type, exam_year)
+    ''')
+    
+    cursor.execute('''
+        CREATE INDEX IF NOT EXISTS idx_branch_semester 
+        ON pyq_files(branch, semester)
+    ''')
+    
+    conn.commit()
+    conn.close()
+    print("Database initialized successfully!")
+
+def insert_pyq_file(data):
+    """Insert a new PYQ file record"""
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    
+    cursor.execute('''
+        INSERT INTO pyq_files 
+        (degree, branch, semester, subject_code, subject_name, exam_type, exam_year, file_path)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+    ''', (
+        data['degree'],
+        data['branch'],
+        data['semester'],
+        data['subject_code'],
+        data['subject_name'],
+        data['exam_type'],
+        data['exam_year'],
+        data['file_path']
+    ))
+    
+    conn.commit()
+    file_id = cursor.lastrowid
+    conn.close()
+    return file_id
+
+def get_exam_sessions():
+    """Get all unique exam sessions (type + year)"""
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    
+    cursor.execute('''
+        SELECT DISTINCT exam_type, exam_year 
+        FROM pyq_files 
+        ORDER BY exam_year DESC, exam_type
+    ''')
+    
+    sessions = [dict(row) for row in cursor.fetchall()]
+    conn.close()
+    return sessions
+
+def get_branches_by_session(exam_type, exam_year):
+    """Get all branches for a specific exam session"""
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    
+    cursor.execute('''
+        SELECT DISTINCT branch 
+        FROM pyq_files 
+        WHERE exam_type = ? AND exam_year = ?
+        ORDER BY branch
+    ''', (exam_type, exam_year))
+    
+    branches = [row['branch'] for row in cursor.fetchall()]
+    conn.close()
+    return branches
+
+def get_subjects(exam_type, exam_year, branch, semester):
+    """Get all subjects for specific filters"""
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    
+    cursor.execute('''
+        SELECT DISTINCT subject_code, subject_name 
+        FROM pyq_files 
+        WHERE exam_type = ? AND exam_year = ? AND branch = ? AND semester = ?
+        ORDER BY subject_code
+    ''', (exam_type, exam_year, branch, semester))
+    
+    subjects = [dict(row) for row in cursor.fetchall()]
+    conn.close()
+    return subjects
+
+def get_paper_details(exam_type, exam_year, branch, semester, subject_code):
+    """Get paper details for specific subject"""
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    
+    cursor.execute('''
+        SELECT * FROM pyq_files 
+        WHERE exam_type = ? AND exam_year = ? AND branch = ? 
+        AND semester = ? AND subject_code = ?
+        LIMIT 1
+    ''', (exam_type, exam_year, branch, semester, subject_code))
+    
+    paper = cursor.fetchone()
+    conn.close()
+    return dict(paper) if paper else None
+
+def get_file_by_id(file_id):
+    """Get file details by ID"""
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    
+    cursor.execute('SELECT * FROM pyq_files WHERE id = ?', (file_id,))
+    file_data = cursor.fetchone()
+    conn.close()
+    return dict(file_data) if file_data else None
+
+if __name__ == '__main__':
+    # Initialize database when run directly
+    init_database()

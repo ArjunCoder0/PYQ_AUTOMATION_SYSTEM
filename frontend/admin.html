@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin Panel - PYQ Management System</title>
+    <meta name="description" content="Admin panel for uploading and managing engineering question papers">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="styles.css">
+</head>
+
+<body>
+    <!-- Header -->
+    <header class="header">
+        <h1>🔐 Admin Panel</h1>
+        <p>Upload and Manage Question Papers</p>
+    </header>
+
+    <div class="container">
+        <!-- Upload Section -->
+        <div class="card">
+            <h2 class="section-title">Upload ZIP File</h2>
+
+            <form id="uploadForm">
+                <!-- Exam Type -->
+                <div class="form-group">
+                    <label class="form-label" for="examType">Exam Type *</label>
+                    <select id="examType" class="form-control" required>
+                        <option value="">-- Select Exam Type --</option>
+                        <option value="Summer">Summer</option>
+                        <option value="Winter">Winter</option>
+                    </select>
+                </div>
+
+                <!-- Exam Year -->
+                <div class="form-group">
+                    <label class="form-label" for="examYear">Exam Year *</label>
+                    <input type="number" id="examYear" class="form-control" placeholder="e.g., 2025" min="2000"
+                        max="2100" required>
+                </div>
+
+                <!-- File Upload -->
+                <div class="form-group">
+                    <label class="form-label">ZIP File *</label>
+                    <div class="file-upload">
+                        <input type="file" id="zipFile" accept=".zip" required>
+                        <label for="zipFile" class="file-upload-label">
+                            <div style="font-size: 2rem; margin-bottom: 0.5rem;">📁</div>
+                            <div id="fileNameDisplay">Click to select ZIP file</div>
+                            <div style="font-size: 0.85rem; color: #64748b; margin-top: 0.5rem;">
+                                Maximum file size: 500 MB
+                            </div>
+                        </label>
+                    </div>
+                </div>
+
+                <!-- Upload Button -->
+                <button type="submit" id="uploadBtn" class="btn btn-primary btn-block">
+                    📤 Upload and Process
+                </button>
+            </form>
+
+            <!-- Progress Section -->
+            <div id="progressSection" class="hidden" style="margin-top: 1.5rem;">
+                <div class="alert alert-info">
+                    <strong>Processing...</strong> Please wait while we extract and process the ZIP file.
+                </div>
+                <div class="spinner"></div>
+            </div>
+        </div>
+
+        <!-- Alert Messages -->
+        <div id="alertContainer"></div>
+
+        <!-- Instructions -->
+        <div class="card">
+            <h2 class="section-title">📋 Instructions</h2>
+            <div style="line-height: 1.8;">
+                <p><strong>1. Prepare ZIP File:</strong></p>
+                <ul style="margin-left: 1.5rem; margin-bottom: 1rem;">
+                    <li>ZIP file should contain PDF files of question papers</li>
+                    <li>PDFs can be in any folder structure inside the ZIP</li>
+                    <li>Maximum file size: 500 MB</li>
+                </ul>
+
+                <p><strong>2. PDF Filename Format:</strong></p>
+                <ul style="margin-left: 1.5rem; margin-bottom: 1rem;">
+                    <li>Must contain: <code>B.Tech</code> OR <code>B.E</code> OR <code>Model Curriculum</code></li>
+                    <li>Must include branch: CSE, IT, ME, CE, EE, ECE</li>
+                    <li>Must include semester: I, II, III, IV, V, VI, VII, VIII (Roman numerals)</li>
+                    <li>Must include subject code: BSCxxx, ESCxxx, PCCxxx, HSMCxxx, MCxxx</li>
+                </ul>
+
+                <p><strong>3. Example Valid Filenames:</strong></p>
+                <ul style="margin-left: 1.5rem; margin-bottom: 1rem;">
+                    <li><code>B.Tech_CSE_III_Sem_BSC301_Data_Structures.pdf</code></li>
+                    <li><code>B.E._ME_V_Semester_ESC501_Thermodynamics.pdf</code></li>
+                    <li><code>Model_Curriculum_IT_VII_PCC701_Machine_Learning.pdf</code></li>
+                </ul>
+
+                <p><strong>4. Processing:</strong></p>
+                <ul style="margin-left: 1.5rem;">
+                    <li>System will automatically filter B.Tech/B.E papers only</li>
+                    <li>Non-engineering papers will be ignored</li>
+                    <li>Invalid filenames will be skipped</li>
+                    <li>Valid papers will be stored and made available to students</li>
+                </ul>
+            </div>
+        </div>
+
+        <!-- Back to Student Portal -->
+        <div style="text-align: center; margin-top: 2rem;">
+            <a href="index.html" style="color: white; text-decoration: none; font-weight: 500;">
+                ← Back to Student Portal
+            </a>
+        </div>
+    </div>
+
+    <script src="admin.js"></script>
+</body>
+
+</html>

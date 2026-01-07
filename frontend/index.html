@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Engineering PYQ System - Student Portal</title>
+    <meta name="description" content="Access previous year question papers for B.Tech and B.E engineering programs">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <!-- Header -->
+    <header class="header">
+        <h1>🎓 Engineering PYQ Portal</h1>
+        <p>Access Previous Year Question Papers - B.Tech & B.E</p>
+    </header>
+
+    <div class="container">
+        <!-- Filter Section -->
+        <div class="card">
+            <h2 class="section-title">Find Your Question Paper</h2>
+            
+            <!-- Step 1: Select Exam Session -->
+            <div class="form-group">
+                <label class="form-label" for="sessionSelect">1️⃣ Select Exam Session</label>
+                <select id="sessionSelect" class="form-control">
+                    <option value="">-- Choose Session --</option>
+                </select>
+            </div>
+
+            <!-- Step 2: Select Branch -->
+            <div class="form-group">
+                <label class="form-label" for="branchSelect">2️⃣ Select Branch</label>
+                <select id="branchSelect" class="form-control" disabled>
+                    <option value="">-- Choose Branch --</option>
+                </select>
+            </div>
+
+            <!-- Step 3: Select Semester -->
+            <div class="form-group">
+                <label class="form-label">3️⃣ Select Semester</label>
+                <div class="btn-grid" id="semesterGrid">
+                    <button class="btn semester-btn" data-semester="1" disabled>1</button>
+                    <button class="btn semester-btn" data-semester="2" disabled>2</button>
+                    <button class="btn semester-btn" data-semester="3" disabled>3</button>
+                    <button class="btn semester-btn" data-semester="4" disabled>4</button>
+                    <button class="btn semester-btn" data-semester="5" disabled>5</button>
+                    <button class="btn semester-btn" data-semester="6" disabled>6</button>
+                    <button class="btn semester-btn" data-semester="7" disabled>7</button>
+                    <button class="btn semester-btn" data-semester="8" disabled>8</button>
+                </div>
+            </div>
+
+            <!-- Step 4: Select Subject -->
+            <div class="form-group">
+                <label class="form-label" for="subjectSelect">4️⃣ Select Subject</label>
+                <select id="subjectSelect" class="form-control" disabled>
+                    <option value="">-- Choose Subject --</option>
+                </select>
+            </div>
+
+            <!-- Search Button -->
+            <button id="searchBtn" class="btn btn-primary btn-block" disabled>
+                🔍 Get Question Paper
+            </button>
+        </div>
+
+        <!-- Result Section -->
+        <div id="resultSection" class="hidden">
+            <div class="result-card">
+                <h3 id="resultTitle">📄 Question Paper Details</h3>
+                
+                <div class="result-info">
+                    <div class="info-item">
+                        <div class="info-label">Subject Name</div>
+                        <div class="info-value" id="resultSubjectName">-</div>
+                    </div>
+                    <div class="info-item">
+                        <div class="info-label">Subject Code</div>
+                        <div class="info-value" id="resultSubjectCode">-</div>
+                    </div>
+                    <div class="info-item">
+                        <div class="info-label">Branch</div>
+                        <div class="info-value" id="resultBranch">-</div>
+                    </div>
+                    <div class="info-item">
+                        <div class="info-label">Semester</div>
+                        <div class="info-value" id="resultSemester">-</div>
+                    </div>
+                    <div class="info-item">
+                        <div class="info-label">Exam Session</div>
+                        <div class="info-value" id="resultSession">-</div>
+                    </div>
+                    <div class="info-item">
+                        <div class="info-label">Degree</div>
+                        <div class="info-value" id="resultDegree">-</div>
+                    </div>
+                </div>
+
+                <div class="action-buttons">
+                    <button id="viewBtn" class="btn btn-primary">
+                        👁️ View PDF
+                    </button>
+                    <button id="downloadBtn" class="btn btn-success">
+                        ⬇️ Download PDF
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Alert Messages -->
+        <div id="alertContainer"></div>
+
+        <!-- Admin Link -->
+        <div style="text-align: center; margin-top: 2rem;">
+            <a href="admin.html" style="color: white; text-decoration: none; font-weight: 500;">
+                🔐 Admin Panel
+            </a>
+        </div>
+    </div>
+
+    <script src="app.js"></script>
+</body>
+</html>
