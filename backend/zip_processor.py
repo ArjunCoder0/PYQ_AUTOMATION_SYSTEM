@@ -335,28 +335,29 @@ class ZIPProcessor:
         }
     
     def _copy_to_storage(self, source_path, metadata):
-        """Copy PDF to permanent storage with organized structure"""
-        # Create organized path: exam_type/exam_year/branch/semester/
-        storage_dir = os.path.join(
-            PDF_STORAGE_PATH,
-            self.exam_type,
-            str(self.exam_year),
-            metadata['branch'],
-            f"Sem_{metadata['semester']}"
-        )
-        
-        os.makedirs(storage_dir, exist_ok=True)
-        
-        # Generate filename: SubjectCode_SubjectName.pdf
-        filename = f"{metadata['subject_code']}_{metadata['subject_name'].replace(' ', '_')}.pdf"
-        dest_path = os.path.join(storage_dir, filename)
-        
-        # Copy file
-        shutil.copy2(source_path, dest_path)
-        
-        # Return relative path from PDF_STORAGE_PATH
-        relative_path = os.path.relpath(dest_path, PDF_STORAGE_PATH)
-        return relative_path
+        """
+        Upload PDF to Google Drive
+        Returns: Google Drive Link (view_link)
+        """
+        try:
+            from drive_uploader import DriveUploader
+            
+            # Initialize uploader
+            uploader = DriveUploader()
+            
+            # Generate filename: SubjectCode_SubjectName.pdf
+            filename = f"{metadata['subject_code']}_{metadata['subject_name'].replace(' ', '_')}.pdf"
+            
+            # Upload to Drive
+            result = uploader.upload_file(source_path, filename)
+            
+            # Return the view link to be stored in database
+            # We store the view link as the 'file_path'
+            return result['view_link']
+            
+        except Exception as e:
+            print(f"Error uploading to Drive: {e}")
+            return None
     
     def _cleanup(self, extract_path):
         """Remove temporary extraction directory"""

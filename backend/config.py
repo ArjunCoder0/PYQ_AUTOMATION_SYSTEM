@@ -11,6 +11,8 @@ PROJECT_ROOT = os.path.dirname(BASE_DIR)
 UPLOAD_FOLDER = os.path.join(PROJECT_ROOT, 'uploads', 'temp')
 PDF_STORAGE_PATH = os.path.join(PROJECT_ROOT, 'uploads', 'pdfs')
 DATABASE_PATH = os.path.join(BASE_DIR, 'pyq_system.db')
+GOOGLE_CREDENTIALS_PATH = os.path.join(BASE_DIR, 'google-credentials.json')
+DRIVE_FOLDER_ID = '17FRtcjvUMBI5HGm2xyvOC0DqwLydZr8i'
 
 # File upload settings
 ALLOWED_EXTENSIONS = {'zip'}

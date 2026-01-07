@@ -18,6 +18,7 @@ ENV/
 # Uploads and temporary files
 uploads/
 *.zip
+google-credentials.json
 
 # IDE
 .vscode/
