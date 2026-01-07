@@ -5,6 +5,9 @@ Main API endpoints for admin upload and user filtering
 from flask import Flask, request, jsonify, send_file
 from flask_cors import CORS
 import os
+import uuid
+import threading
+import time
 from werkzeug.utils import secure_filename
 
 from config import UPLOAD_FOLDER, PDF_STORAGE_PATH, ALLOWED_EXTENSIONS, MAX_FILE_SIZE
@@ -20,6 +23,9 @@ app = Flask(__name__,
             static_url_path='')
 CORS(app)  # Enable CORS for frontend communication
 
+# Global task storage
+upload_tasks = {}
+
 # Initialize database on startup
 init_database()
 
@@ -29,11 +35,57 @@ def allowed_file(filename):
 
 # ==================== ADMIN ENDPOINTS ====================
 
+def process_zip_background(task_id, zip_path, exam_type, exam_year):
+    """Background task to process ZIP file"""
+    try:
+        def update_progress(current, total):
+            upload_tasks[task_id].update({
+                'processed': current,
+                'total': total,
+                'percent': int((current / total) * 100)
+            })
+
+        processor = ZIPProcessor(zip_path, exam_type, int(exam_year))
+        result = processor.process(progress_callback=update_progress)
+        
+        if result['success']:
+            # Insert valid papers into database
+            inserted_count = 0
+            for paper in result['papers']:
+                try:
+                    insert_pyq_file(paper)
+                    inserted_count += 1
+                except Exception as e:
+                    print(f"Error inserting paper: {e}")
+            
+            upload_tasks[task_id].update({
+                'status': 'completed',
+                'result': {
+                    'success': True,
+                    'message': f'Successfully processed {inserted_count} papers',
+                    'total_pdfs': result['total_pdfs'],
+                    'valid_papers': result['valid_papers'],
+                    'inserted': inserted_count
+                }
+            })
+        else:
+             upload_tasks[task_id].update({
+                'status': 'failed',
+                'error': result.get('error', 'Unknown error during processing')
+            })
+            
+    except Exception as e:
+        upload_tasks[task_id].update({
+            'status': 'failed',
+            'error': str(e)
+        })
+
 @app.route('/api/admin/upload', methods=['POST'])
 def admin_upload():
     """
     Admin endpoint to upload ZIP file
     Expects: ZIP file, exam_type (Summer/Winter), exam_year
+    Returns: task_id for tracking progress
     """
     try:
         # Validate request
@@ -63,32 +115,39 @@ def admin_upload():
             os.remove(zip_path)
             return jsonify({'success': False, 'error': 'File too large (max 500MB)'}), 400
         
-        # Process ZIP file
-        processor = ZIPProcessor(zip_path, exam_type, int(exam_year))
-        result = processor.process()
+        # Create background task
+        task_id = str(uuid.uuid4())
+        upload_tasks[task_id] = {
+            'status': 'processing',
+            'processed': 0,
+            'total': 0,
+            'percent': 0
+        }
         
-        if not result['success']:
-            return jsonify(result), 500
-        
-        # Insert valid papers into database
-        inserted_count = 0
-        for paper in result['papers']:
-            try:
-                insert_pyq_file(paper)
-                inserted_count += 1
-            except Exception as e:
-                print(f"Error inserting paper: {e}")
+        # Start processing in background thread
+        thread = threading.Thread(
+            target=process_zip_background,
+            args=(task_id, zip_path, exam_type, exam_year)
+        )
+        thread.start()
         
         return jsonify({
-            'success': True,
-            'message': f'Successfully processed {inserted_count} papers',
-            'total_pdfs': result['total_pdfs'],
-            'valid_papers': result['valid_papers'],
-            'inserted': inserted_count
+            'success': True, 
+            'task_id': task_id,
+            'message': 'File uploaded, processing started in background'
         }), 200
     
     except Exception as e:
         return jsonify({'success': False, 'error': str(e)}), 500
+
+@app.route('/api/admin/task/<task_id>', methods=['GET'])
+def get_task_status(task_id):
+    """Get status of background task"""
+    task = upload_tasks.get(task_id)
+    if not task:
+        return jsonify({'success': False, 'error': 'Task not found'}), 404
+    
+    return jsonify({'success': True, 'task': task}), 200
 
 # ==================== USER FILTER ENDPOINTS ====================
 

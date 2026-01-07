@@ -18,7 +18,7 @@ class ZIPProcessor:
         self.exam_year = exam_year
         self.extracted_files = []
     
-    def process(self):
+    def process(self, progress_callback=None):
         """
         Main processing method:
         1. Extract ZIP
@@ -46,7 +46,13 @@ class ZIPProcessor:
             valid_papers = []
             rejected_reasons = {'no_degree': 0, 'no_branch': 0, 'no_semester': 0, 'no_subject_code': 0}
             
-            for pdf_path in pdf_files:
+            total_pdfs = len(pdf_files)
+            
+            for i, pdf_path in enumerate(pdf_files):
+                # Report progress
+                if progress_callback and i % 10 == 0:
+                    progress_callback(i, total_pdfs)
+                
                 metadata = self._parse_filename(pdf_path)
                 if metadata:
                     # Copy PDF to permanent storage
@@ -56,6 +62,10 @@ class ZIPProcessor:
                         metadata['exam_type'] = self.exam_type
                         metadata['exam_year'] = self.exam_year
                         valid_papers.append(metadata)
+            
+            # Final progress update
+            if progress_callback:
+                progress_callback(total_pdfs, total_pdfs)
             
             # DEBUG: Print rejection stats
             print(f"\n=== PROCESSING RESULTS ===")
