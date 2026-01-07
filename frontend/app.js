@@ -3,7 +3,10 @@
  * Handles filter flow and API integration
  */
 
-const API_BASE_URL = 'http://localhost:5000/api';
+// Dynamically set API URL based on environment
+const API_BASE_URL = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
+    ? 'http://localhost:5000/api'
+    : `${window.location.origin}/api`;
 
 // State management
 let selectedSession = null;
