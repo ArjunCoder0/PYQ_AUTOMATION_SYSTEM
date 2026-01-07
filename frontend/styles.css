@@ -11,26 +11,26 @@
     --secondary-color: #10b981;
     --accent-color: #f59e0b;
     --danger-color: #ef4444;
-    
+
     /* Neutral Colors */
     --bg-color: #f8fafc;
     --card-bg: #ffffff;
     --text-primary: #1e293b;
     --text-secondary: #64748b;
     --border-color: #e2e8f0;
-    
+
     /* Spacing */
     --spacing-xs: 0.5rem;
     --spacing-sm: 1rem;
     --spacing-md: 1.5rem;
     --spacing-lg: 2rem;
     --spacing-xl: 3rem;
-    
+
     /* Border Radius */
     --radius-sm: 0.5rem;
     --radius-md: 0.75rem;
     --radius-lg: 1rem;
-    
+
     /* Shadows */
     --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
     --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
@@ -318,8 +318,13 @@ body {
 }
 
 @keyframes spin {
-    0% { transform: rotate(0deg); }
-    100% { transform: rotate(360deg); }
+    0% {
+        transform: rotate(0deg);
+    }
+
+    100% {
+        transform: rotate(360deg);
+    }
 }
 
 /* Hidden */
@@ -364,32 +369,64 @@ body {
     margin-bottom: var(--spacing-sm);
 }
 
+/* Progress Bar */
+.progress-container {
+    width: 100%;
+    background-color: var(--border-color);
+    border-radius: var(--radius-md);
+    margin: var(--spacing-sm) 0;
+    overflow: hidden;
+    height: 1.5rem;
+    position: relative;
+}
+
+.progress-bar {
+    width: 0%;
+    height: 100%;
+    background: linear-gradient(135deg, var(--primary-color), var(--primary-dark));
+    transition: width 0.3s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    font-size: 0.85rem;
+    font-weight: 600;
+}
+
+.progress-text {
+    text-align: center;
+    font-size: 0.9rem;
+    color: var(--text-secondary);
+    margin-top: var(--spacing-xs);
+    font-weight: 500;
+}
+
 /* Responsive Design */
 @media (max-width: 768px) {
     .header h1 {
         font-size: 1.75rem;
     }
-    
+
     .header p {
         font-size: 1rem;
     }
-    
+
     .card {
         padding: var(--spacing-md);
     }
-    
+
     .btn-grid {
         grid-template-columns: repeat(2, 1fr);
     }
-    
+
     .result-info {
         grid-template-columns: 1fr;
     }
-    
+
     .action-buttons {
         flex-direction: column;
     }
-    
+
     .action-buttons .btn {
         width: 100%;
     }
@@ -399,16 +436,16 @@ body {
     .container {
         padding: var(--spacing-sm);
     }
-    
+
     .header {
         padding: var(--spacing-lg) var(--spacing-sm);
     }
-    
+
     .btn-grid {
         grid-template-columns: repeat(2, 1fr);
         gap: var(--spacing-xs);
     }
-    
+
     .semester-btn {
         font-size: 1.2rem;
     }

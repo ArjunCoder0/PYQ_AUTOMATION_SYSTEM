@@ -77,9 +77,15 @@ async function handleUpload(event) {
         return;
     }
 
-    // Show progress
+    // Prepare UI
     progressSection.classList.remove('hidden');
     uploadBtn.disabled = true;
+    const progressBar = document.getElementById('progressBar');
+    const progressText = document.getElementById('progressText');
+
+    progressBar.style.width = '0%';
+    progressBar.textContent = '0%';
+    progressText.textContent = 'Starting upload...';
 
     // Prepare form data
     const formData = new FormData();
@@ -87,45 +93,75 @@ async function handleUpload(event) {
     formData.append('exam_type', examType);
     formData.append('exam_year', examYear);
 
-    try {
-        const response = await fetch(`${API_BASE_URL}/admin/upload`, {
-            method: 'POST',
-            body: formData
-        });
+    // Use XMLHttpRequest for progress tracking
+    const xhr = new XMLHttpRequest();
 
-        const data = await response.json();
+    // Track upload progress
+    xhr.upload.onprogress = function (e) {
+        if (e.lengthComputable) {
+            const percentComplete = Math.round((e.loaded / e.total) * 100);
+            progressBar.style.width = percentComplete + '%';
+            progressBar.textContent = percentComplete + '%';
 
+            if (percentComplete < 100) {
+                progressText.textContent = `Uploading: ${percentComplete}%`;
+            } else {
+                progressText.textContent = 'Processing files on server... This may take a few minutes.';
+                progressBar.classList.add('progress-bar-striped'); // Optional styling class can be added
+            }
+        }
+    };
+
+    // Handle response
+    xhr.onload = function () {
         // Hide progress
         progressSection.classList.add('hidden');
         uploadBtn.disabled = false;
 
-        if (data.success) {
-            showAlert(
-                `✅ Success! Processed ${data.inserted} papers out of ${data.total_pdfs} PDFs found.`,
-                'success'
-            );
+        if (xhr.status === 200) {
+            try {
+                const data = JSON.parse(xhr.responseText);
+                if (data.success) {
+                    showAlert(
+                        `✅ Success! Processed ${data.inserted} papers out of ${data.total_pdfs} PDFs found.`,
+                        'success'
+                    );
 
-            // Show detailed info
-            if (data.valid_papers !== data.inserted) {
-                showAlert(
-                    `ℹ️ Note: ${data.valid_papers} valid engineering papers found, ${data.inserted} successfully inserted into database.`,
-                    'info'
-                );
+                    // Show detailed info
+                    if (data.valid_papers !== data.inserted) {
+                        showAlert(
+                            `ℹ️ Note: ${data.valid_papers} valid engineering papers found, ${data.inserted} successfully inserted into database.`,
+                            'info'
+                        );
+                    }
+
+                    // Reset form
+                    uploadForm.reset();
+                    fileNameDisplay.textContent = 'Click to select ZIP file';
+                    setDefaultYear();
+                    progressBar.style.width = '0%';
+                } else {
+                    showAlert(`❌ Error: ${data.error}`, 'error');
+                }
+            } catch (e) {
+                showAlert('❌ Error parsing server response.', 'error');
+                console.error('JSON Parse Error:', e);
             }
-
-            // Reset form
-            uploadForm.reset();
-            fileNameDisplay.textContent = 'Click to select ZIP file';
-            setDefaultYear();
         } else {
-            showAlert(`❌ Error: ${data.error}`, 'error');
+            showAlert(`❌ Server Error: ${xhr.status} ${xhr.statusText}`, 'error');
         }
-    } catch (error) {
+    };
+
+    // Handle errors
+    xhr.onerror = function () {
         progressSection.classList.add('hidden');
         uploadBtn.disabled = false;
-        showAlert('❌ Error connecting to server. Please check if the backend is running.', 'error');
-        console.error('Upload error:', error);
-    }
+        showAlert('❌ Network Error. Please check your connection.', 'error');
+    };
+
+    // Open and send request
+    xhr.open('POST', `${API_BASE_URL}/admin/upload`, true);
+    xhr.send(formData);
 }
 
 // Show alert message

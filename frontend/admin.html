@@ -66,9 +66,13 @@
             <!-- Progress Section -->
             <div id="progressSection" class="hidden" style="margin-top: 1.5rem;">
                 <div class="alert alert-info">
-                    <strong>Processing...</strong> Please wait while we extract and process the ZIP file.
+                    <strong>Processing...</strong> Uploading and analyzing papers. Please do not close this window.
                 </div>
-                <div class="spinner"></div>
+
+                <div class="progress-container">
+                    <div id="progressBar" class="progress-bar">0%</div>
+                </div>
+                <div id="progressText" class="progress-text">Uploading: 0%</div>
             </div>
         </div>
 
