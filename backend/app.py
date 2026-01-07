@@ -14,7 +14,10 @@ from database import (
 )
 from zip_processor import ZIPProcessor
 
-app = Flask(__name__)
+# Configure Flask to serve frontend files
+app = Flask(__name__, 
+            static_folder='../frontend',
+            static_url_path='')
 CORS(app)  # Enable CORS for frontend communication
 
 # Initialize database on startup
@@ -199,6 +202,18 @@ def download_pdf(file_id):
         return send_file(pdf_path, as_attachment=True, download_name=download_name)
     except Exception as e:
         return jsonify({'success': False, 'error': str(e)}), 500
+
+# ==================== FRONTEND ROUTES ====================
+
+@app.route('/')
+def index():
+    """Serve student portal"""
+    return send_file('../frontend/index.html')
+
+@app.route('/admin.html')
+def admin():
+    """Serve admin panel"""
+    return send_file('../frontend/admin.html')
 
 # ==================== HEALTH CHECK ====================
 
