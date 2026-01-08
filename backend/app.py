@@ -150,12 +150,13 @@ def admin_upload():
 def fetch_zip():
     """
     NEW: Fetch ZIP from URL (server-side download)
-    Bypasses browser upload limitations
-    Returns: job_id for batch processing
+    Downloads asynchronously to avoid worker timeout
+    Returns: job_id immediately
     """
     try:
         from database import create_upload_job
         from zip_fetcher import fetch_zip_from_url, validate_zip_url
+        import threading
         
         # Get request data
         data = request.get_json()
@@ -173,31 +174,69 @@ def fetch_zip():
         # Generate filename
         filename = f"{exam_type}_{exam_year}.zip"
         
-        # Download ZIP from URL (server-side)
-        print(f"Downloading ZIP from: {zip_url}")
-        zip_path, file_size = fetch_zip_from_url(zip_url, filename)
+        # Create job record immediately with status FETCHING
+        job_id = create_upload_job(filename, '', exam_type, int(exam_year), 0, zip_url=zip_url)
         
-        # Check file size
-        if file_size > MAX_FILE_SIZE:
-            os.remove(zip_path)
-            return jsonify({'success': False, 'error': 'File too large (max 1GB)'}), 400
+        # Update job status to FETCHING
+        from database import get_db_connection
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        cursor.execute('UPDATE upload_jobs SET status = ? WHERE id = ?', ('FETCHING', job_id))
+        conn.commit()
+        conn.close()
         
-        # Create job record (extraction will happen on first batch process)
-        job_id = create_upload_job(filename, zip_path, exam_type, int(exam_year), 0, zip_url=zip_url)
+        # Download ZIP in background thread
+        def download_in_background():
+            try:
+                print(f"Background download starting for job {job_id}: {zip_url}")
+                zip_path, file_size = fetch_zip_from_url(zip_url, filename)
+                
+                # Check file size
+                if file_size > MAX_FILE_SIZE:
+                    os.remove(zip_path)
+                    # Update job status to FAILED
+                    conn = get_db_connection()
+                    cursor = conn.cursor()
+                    cursor.execute('UPDATE upload_jobs SET status = ? WHERE id = ?', ('FAILED', job_id))
+                    conn.commit()
+                    conn.close()
+                    print(f"Job {job_id} failed: File too large")
+                    return
+                
+                # Update job with zip_path and status UPLOADED
+                conn = get_db_connection()
+                cursor = conn.cursor()
+                cursor.execute('UPDATE upload_jobs SET zip_path = ?, status = ? WHERE id = ?', 
+                             (zip_path, 'UPLOADED', job_id))
+                conn.commit()
+                conn.close()
+                print(f"Job {job_id} download complete: {file_size / (1024*1024):.2f} MB")
+                
+            except Exception as e:
+                print(f"Background download failed for job {job_id}: {e}")
+                # Update job status to FAILED
+                conn = get_db_connection()
+                cursor = conn.cursor()
+                cursor.execute('UPDATE upload_jobs SET status = ? WHERE id = ?', ('FAILED', job_id))
+                conn.commit()
+                conn.close()
         
+        # Start background thread
+        thread = threading.Thread(target=download_in_background)
+        thread.daemon = True
+        thread.start()
+        
+        # Return immediately
         return jsonify({
             'success': True,
             'job_id': job_id,
             'filename': filename,
-            'file_size': file_size,
-            'file_size_mb': round(file_size / (1024*1024), 2),
-            'total_pdfs': 0,  # Will be counted on first batch
-            'status': 'UPLOADED',
-            'message': f'ZIP downloaded successfully ({round(file_size / (1024*1024), 2)} MB)! Click "Process Next Batch" to start.'
+            'status': 'FETCHING',
+            'message': f'Download started! The server is fetching the ZIP file. Check status in a few moments.'
         }), 200
     
     except Exception as e:
-        print(f"Error fetching ZIP: {e}")
+        print(f"Error creating fetch job: {e}")
         return jsonify({'success': False, 'error': str(e)}), 500
 
 @app.route('/api/admin/process-batch/<int:job_id>', methods=['POST'])
