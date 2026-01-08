@@ -219,14 +219,26 @@ function displayResult(paper) {
 // View PDF
 function viewPDF() {
     if (currentPaper) {
-        window.open(`${API_BASE_URL}/pdf/view/${currentPaper.id}`, '_blank');
+        // If file_path is a Cloudinary URL, open it directly
+        if (currentPaper.file_path && currentPaper.file_path.startsWith('http')) {
+            window.open(currentPaper.file_path, '_blank');
+        } else {
+            // Fallback to API endpoint for local files
+            window.open(`${API_BASE_URL}/pdf/view/${currentPaper.id}`, '_blank');
+        }
     }
 }
 
 // Download PDF
 function downloadPDF() {
     if (currentPaper) {
-        window.location.href = `${API_BASE_URL}/pdf/download/${currentPaper.id}`;
+        // If file_path is a Cloudinary URL, download it directly
+        if (currentPaper.file_path && currentPaper.file_path.startsWith('http')) {
+            window.location.href = currentPaper.file_path;
+        } else {
+            // Fallback to API endpoint for local files
+            window.location.href = `${API_BASE_URL}/pdf/download/${currentPaper.id}`;
+        }
     }
 }
 
