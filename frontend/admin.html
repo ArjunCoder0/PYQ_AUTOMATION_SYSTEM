@@ -23,7 +23,9 @@
         <!-- Upload Section -->
         <div class="card">
             <h2 class="section-title">Upload ZIP File</h2>
-
+            <button type="button"
+                onclick="document.getElementById('urlGroup').style.display='block'; document.getElementById('zipFile').required=false">Use
+                URL Instead</button>
             <form id="uploadForm">
                 <!-- Exam Type -->
                 <div class="form-group">
@@ -40,6 +42,12 @@
                     <label class="form-label" for="examYear">Exam Year *</label>
                     <input type="number" id="examYear" class="form-control" placeholder="e.g., 2025" min="2000"
                         max="2100" required>
+                </div>
+                <!-- URL Input -->
+                <div class="form-group" id="urlGroup" style="display:none;">
+                    <label>University ZIP URL *</label>
+                    <input type="url" id="zipUrl" class="form-control" placeholder="https://...">
+                    <small>Direct download link (bypasses upload timeout)</small>
                 </div>
 
                 <!-- File Upload -->
