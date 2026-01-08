@@ -48,6 +48,10 @@ class ZIPProcessor:
             
             total_pdfs = len(pdf_files)
             
+            total_pdfs = len(pdf_files)
+            valid_papers = []
+            upload_errors = [] # Track errors
+            
             for i, pdf_path in enumerate(pdf_files):
                 # Report progress
                 if progress_callback and i % 10 == 0:
@@ -62,18 +66,20 @@ class ZIPProcessor:
                         metadata['exam_type'] = self.exam_type
                         metadata['exam_year'] = self.exam_year
                         valid_papers.append(metadata)
+                    else:
+                        upload_errors.append(f"Failed to upload {os.path.basename(pdf_path)}")
             
             # Final progress update
             if progress_callback:
                 progress_callback(total_pdfs, total_pdfs)
             
-            # DEBUG: Print rejection stats
-            print(f"\n=== PROCESSING RESULTS ===")
-            print(f"Total PDFs: {len(pdf_files)}")
-            print(f"Valid papers: {len(valid_papers)}")
-            print(f"Rejected: {len(pdf_files) - len(valid_papers)}")
-            print("=" * 50 + "\n")
-            
+            # Check for total failure
+            if not valid_papers and upload_errors:
+                 return {
+                    'success': False,
+                    'error': f'All {total_pdfs} uploads failed. Most likely an authentication error with Google Drive. Check server logs.'
+                }
+
             # Cleanup temporary files
             self._cleanup(extract_path)
             
