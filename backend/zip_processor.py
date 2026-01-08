@@ -342,7 +342,7 @@ class ZIPProcessor:
     
     def _copy_to_storage(self, source_path, metadata):
         """
-        Copy PDF to local storage
+        Copy PDF to local storage on Railway
         Returns: relative file path
         """
         try:
@@ -365,7 +365,7 @@ class ZIPProcessor:
             return filename
             
         except Exception as e:
-            print(f"CRITICAL ERROR COPYING FILE: {e}")
+            print(f"ERROR copying file: {e}")
             return None
     
     def _cleanup(self, extract_path):

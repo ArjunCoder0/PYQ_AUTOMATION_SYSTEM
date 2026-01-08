@@ -36,17 +36,23 @@ def allowed_file(filename):
 # ==================== ADMIN ENDPOINTS ====================
 
 def process_zip_background(task_id, zip_path, exam_type, exam_year):
-    """Background task to process ZIP file"""
+    """Background task to process ZIP file and upload to Cloudinary"""
     try:
-        def update_progress(current, total):
+        upload_tasks[task_id]['status'] = 'processing'
+        
+        # Initialize processor
+        processor = ZIPProcessor(zip_path, exam_type, int(exam_year)) # Keep int(exam_year) as per original
+        
+        # Process ZIP - this now uploads to Cloudinary incrementally
+        result = processor.process(progress_callback=lambda current, total: 
             upload_tasks[task_id].update({
-                'processed': current,
-                'total': total,
-                'percent': int((current / total) * 100)
+                'progress': {
+                    'current': current,
+                    'total': total,
+                    'percentage': int((current / total) * 100) if total > 0 else 0
+                }
             })
-
-        processor = ZIPProcessor(zip_path, exam_type, int(exam_year))
-        result = processor.process(progress_callback=update_progress)
+        )
         
         if result['success']:
             # Insert valid papers into database
