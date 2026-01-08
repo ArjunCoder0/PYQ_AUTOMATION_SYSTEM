@@ -1,6 +1,6 @@
 /**
  * Frontend JavaScript for Admin Panel - Out-of-Band ZIP Ingestion
- * Handles server-side ZIP download from URLs and batch processing
+ * Handles server-side ZIP download from URLs with status polling
  */
 
 // Dynamically set API URL based on environment
@@ -14,7 +14,10 @@ const examTypeSelect = document.getElementById('examType');
 const examYearInput = document.getElementById('examYear');
 const zipUrlInput = document.getElementById('zipUrl');
 const uploadBtn = document.getElementById('uploadBtn');
-const progressSection = document.getElementById('progressSection');
+const downloadProgress = document.getElementById('downloadProgress');
+const downloadMessage = document.getElementById('downloadMessage');
+const downloadBar = document.getElementById('downloadBar');
+const downloadText = document.getElementById('downloadText');
 const processingSection = document.getElementById('processingSection');
 const alertContainer = document.getElementById('alertContainer');
 
@@ -30,6 +33,7 @@ const processingLog = document.getElementById('processingLog');
 // State
 let currentJobId = null;
 let isAutoProcessing = false;
+let statusPollInterval = null;
 
 // Initialize
 document.addEventListener('DOMContentLoaded', () => {
@@ -73,8 +77,8 @@ async function handleFetchZip(event) {
 
     // Prepare UI
     uploadBtn.disabled = true;
-    uploadBtn.textContent = '⏳ Downloading from server...';
-    progressSection.classList.remove('hidden');
+    uploadBtn.textContent = '⏳ Starting download...';
+    downloadProgress.classList.remove('hidden');
 
     try {
         // Call fetch-zip endpoint
@@ -93,35 +97,85 @@ async function handleFetchZip(event) {
         const data = await response.json();
 
         if (data.success) {
-            // Hide upload section, show processing section
-            progressSection.classList.add('hidden');
-            processingSection.classList.remove('hidden');
-
-            // Set job info
             currentJobId = data.job_id;
-            jobFilename.textContent = data.filename;
-            uploadMessage.textContent = data.message;
 
-            // Update progress (total will be 0 until first batch)
-            updateProgress(0, data.total_pdfs || 1, 0);
-            batchProgressText.textContent = `Ready to process (click button to start)`;
+            // Show download in progress
+            downloadMessage.textContent = 'Server is downloading the ZIP file in the background. Please wait...';
+            downloadBar.textContent = 'Downloading...';
+            downloadBar.style.width = '50%';
+            downloadText.textContent = 'Download in progress (checking status every 5 seconds)';
 
-            // Add log
-            const sizeInfo = data.file_size_mb ? ` (${data.file_size_mb} MB)` : '';
-            addLog(`✓ Downloaded: ${data.filename}${sizeInfo}`);
+            // Start polling job status
+            startStatusPolling(data.job_id, data.filename);
 
-            showAlert(data.message, 'success');
         } else {
             throw new Error(data.error || 'Download failed');
         }
     } catch (error) {
         showAlert(`Error: ${error.message}`, 'error');
-        addLog(`❌ Error: ${error.message}`);
-    } finally {
+        downloadProgress.classList.add('hidden');
         uploadBtn.disabled = false;
-        uploadBtn.textContent = '� Fetch ZIP from Server';
-        progressSection.classList.add('hidden');
+        uploadBtn.textContent = '🔗 Fetch ZIP from Server';
     }
+}
+
+// Start polling job status
+function startStatusPolling(jobId, filename) {
+    let attempts = 0;
+    const maxAttempts = 120; // 10 minutes max (5 second intervals)
+
+    statusPollInterval = setInterval(async () => {
+        attempts++;
+
+        try {
+            const response = await fetch(`${API_BASE_URL}/admin/job-status/${jobId}`);
+            const data = await response.json();
+
+            downloadText.textContent = `Checking status... (${attempts * 5} seconds elapsed)`;
+
+            if (data.status === 'UPLOADED') {
+                // Download complete!
+                clearInterval(statusPollInterval);
+
+                downloadBar.style.width = '100%';
+                downloadBar.textContent = '100%';
+                downloadText.textContent = '✓ Download complete!';
+
+                setTimeout(() => {
+                    downloadProgress.classList.add('hidden');
+                    processingSection.classList.remove('hidden');
+
+                    jobFilename.textContent = filename;
+                    uploadMessage.textContent = 'ZIP file downloaded successfully! Ready to process.';
+                    updateProgress(0, data.total_pdfs || 1, 0);
+                    batchProgressText.textContent = `Ready to process (click button to start)`;
+                    addLog(`✓ Downloaded: ${filename}`);
+
+                    uploadBtn.disabled = false;
+                    uploadBtn.textContent = '🔗 Fetch ZIP from Server';
+
+                    showAlert('Download complete! Click "Process Next 15 PDFs" to start.', 'success');
+                }, 1000);
+
+            } else if (data.status === 'FAILED') {
+                clearInterval(statusPollInterval);
+                throw new Error('Download failed on server');
+
+            } else if (data.status === 'FETCHING') {
+                // Still downloading, continue polling
+                if (attempts >= maxAttempts) {
+                    clearInterval(statusPollInterval);
+                    throw new Error('Download timeout - file may be too large or server is slow');
+                }
+            }
+        } catch (error) {
+            clearInterval(statusPollInterval);
+            downloadProgress.classList.add('hidden');
+            uploadBtn.disabled = false;
+            uploadBtn.textContent = '🔗 Fetch ZIP from Server';
+            showAlert(`Download error: ${error.message}`, 'error');
+        }
+    }, 5000); // Check every 5 seconds
 }
 
 // Process single batch
@@ -144,7 +198,6 @@ async function processSingleBatch() {
         if (data.success) {
             updateProgress(data.processed, data.total, data.percentage);
 
-            // Update text with actual total after first batch
             const statusText = data.status === 'COMPLETED'
                 ? '✓ Complete!'
                 : `Processed batch: ${data.batch_processed} PDFs`;
@@ -220,7 +273,7 @@ async function autoProcessLoop() {
             }
         } catch (error) {
             isAutoProcessing = false;
-            autoProcessBtn.textContent = '� Auto Process All';
+            autoProcessBtn.textContent = '🔄 Auto Process All';
             autoProcessBtn.classList.remove('btn-danger');
             autoProcessBtn.classList.add('btn-secondary');
             processBatchBtn.disabled = false;
