@@ -342,27 +342,26 @@ class ZIPProcessor:
     
     def _copy_to_storage(self, source_path, metadata):
         """
-        Upload PDF to Google Drive
-        Returns: Google Drive Link (view_link)
+        Upload PDF to Cloudinary
+        Returns: Cloudinary URL
         """
         try:
-            from drive_uploader import DriveUploader
+            from cloud_uploader import CloudUploader
             
             # Initialize uploader
-            uploader = DriveUploader()
+            uploader = CloudUploader()
             
             # Generate filename: SubjectCode_SubjectName.pdf
             filename = f"{metadata['subject_code']}_{metadata['subject_name'].replace(' ', '_')}.pdf"
             
-            # Upload to Drive
+            # Upload to Cloudinary
             result = uploader.upload_file(source_path, filename)
             
-            # Return the view link to be stored in database
-            # We store the view link as the 'file_path'
+            # Return the secure URL to be stored in database
             return result['view_link']
             
         except Exception as e:
-            print(f"CRITICAL ERROR UPLOADING TO DRIVE: {e}")
+            print(f"CRITICAL ERROR UPLOADING TO CLOUDINARY: {e}")
             # We can't return the error easily without changing signature, so we count on "new_path" being None
             return None
     
