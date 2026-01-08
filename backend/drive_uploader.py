@@ -68,7 +68,8 @@ class DriveUploader:
         file = self.service.files().create(
             body=file_metadata,
             media_body=media,
-            fields='id, webViewLink, webContentLink'
+            fields='id, webViewLink, webContentLink',
+            supportsAllDrives=True
         ).execute()
         
         # Make file public (optional, but good for easy access without auth issues for students)
