@@ -89,11 +89,13 @@ def process_zip_background(task_id, zip_path, exam_type, exam_year):
 @app.route('/api/admin/upload', methods=['POST'])
 def admin_upload():
     """
-    Admin endpoint to upload ZIP file
-    Expects: ZIP file, exam_type (Summer/Winter), exam_year
-    Returns: task_id for tracking progress
+    NEW: Upload ZIP and create job (no processing)
+    Returns: job_id for batch processing
     """
     try:
+        from database import create_upload_job
+        from batch_processor import BatchProcessor
+        
         # Validate request
         if 'file' not in request.files:
             return jsonify({'success': False, 'error': 'No file provided'}), 400
@@ -119,33 +121,107 @@ def admin_upload():
         # Check file size
         if os.path.getsize(zip_path) > MAX_FILE_SIZE:
             os.remove(zip_path)
-            return jsonify({'success': False, 'error': 'File too large (max 500MB)'}), 400
+            return jsonify({'success': False, 'error': 'File too large (max 1GB)'}), 400
         
-        # Create background task
-        task_id = str(uuid.uuid4())
-        upload_tasks[task_id] = {
-            'status': 'processing',
-            'processed': 0,
-            'total': 0,
-            'percent': 0
-        }
+        # Extract ZIP and count PDFs
+        processor = BatchProcessor.__new__(BatchProcessor)
+        processor.job_id = None
+        processor.job = {'zip_path': zip_path, 'exam_type': exam_type, 'exam_year': int(exam_year)}
+        processor.processor = ZIPProcessor(zip_path, exam_type, int(exam_year))
         
-        # Start processing in background thread
-        thread = threading.Thread(
-            target=process_zip_background,
-            args=(task_id, zip_path, exam_type, exam_year)
-        )
-        thread.start()
+        extract_path = processor.processor._extract_zip()
+        pdf_files = processor.processor._find_pdfs(extract_path)
+        total_pdfs = len(pdf_files)
+        
+        # Create job record
+        job_id = create_upload_job(filename, zip_path, exam_type, int(exam_year), total_pdfs)
+        
+        # Update with extract path
+        from database import update_job_extract_path
+        update_job_extract_path(job_id, extract_path)
         
         return jsonify({
-            'success': True, 
-            'task_id': task_id,
-            'message': 'File uploaded, processing started in background'
+            'success': True,
+            'job_id': job_id,
+            'filename': filename,
+            'total_pdfs': total_pdfs,
+            'status': 'UPLOADED',
+            'message': f'Upload complete! Found {total_pdfs} PDFs. Ready to process.'
         }), 200
     
     except Exception as e:
         return jsonify({'success': False, 'error': str(e)}), 500
 
+@app.route('/api/admin/process-batch/<int:job_id>', methods=['POST'])
+def process_batch(job_id):
+    """
+    Process next batch of PDFs for a job
+    Query params: batch_size (default: 15)
+    """
+    try:
+        from batch_processor import BatchProcessor
+        
+        batch_size = request.args.get('batch_size', 15, type=int)
+        
+        processor = BatchProcessor(job_id)
+        result = processor.process_batch(batch_size)
+        
+        return jsonify(result), 200
+    
+    except ValueError as e:
+        return jsonify({'success': False, 'error': str(e)}), 404
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@app.route('/api/admin/job-status/<int:job_id>', methods=['GET'])
+def get_job_status(job_id):
+    """Get current status of an upload job"""
+    try:
+        from database import get_upload_job
+        
+        job = get_upload_job(job_id)
+        
+        if not job:
+            return jsonify({'success': False, 'error': 'Job not found'}), 404
+        
+        percentage = int((job['processed_pdfs'] / job['total_pdfs']) * 100) if job['total_pdfs'] > 0 else 0
+        
+        return jsonify({
+            'success': True,
+            'job_id': job['id'],
+            'filename': job['filename'],
+            'processed': job['processed_pdfs'],
+            'total': job['total_pdfs'],
+            'percentage': percentage,
+            'status': job['status'],
+            'created_at': job['created_at'],
+            'updated_at': job['updated_at']
+        }), 200
+    
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@app.route('/api/admin/jobs', methods=['GET'])
+def get_all_jobs():
+    """Get all upload jobs"""
+    try:
+        from database import get_all_upload_jobs
+        
+        jobs = get_all_upload_jobs()
+        
+        # Add percentage to each job
+        for job in jobs:
+            job['percentage'] = int((job['processed_pdfs'] / job['total_pdfs']) * 100) if job['total_pdfs'] > 0 else 0
+        
+        return jsonify({
+            'success': True,
+            'jobs': jobs
+        }), 200
+    
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+# Keep old task endpoint for backwards compatibility
 @app.route('/api/admin/task/<task_id>', methods=['GET'])
 def get_task_status(task_id):
     """Get status of background task"""

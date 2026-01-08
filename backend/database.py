@@ -32,6 +32,23 @@ def init_database():
         )
     ''')
     
+    # Create upload_jobs table for chunked processing
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS upload_jobs (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            filename TEXT NOT NULL,
+            zip_path TEXT NOT NULL,
+            extract_path TEXT,
+            exam_type TEXT NOT NULL,
+            exam_year INTEGER NOT NULL,
+            total_pdfs INTEGER DEFAULT 0,
+            processed_pdfs INTEGER DEFAULT 0,
+            status TEXT DEFAULT 'UPLOADED',
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )
+    ''')
+    
     # Create indexes for faster queries
     cursor.execute('''
         CREATE INDEX IF NOT EXISTS idx_exam_session 
@@ -144,6 +161,76 @@ def get_file_by_id(file_id):
     file_data = cursor.fetchone()
     conn.close()
     return dict(file_data) if file_data else None
+
+# ==================== UPLOAD JOBS FUNCTIONS ====================
+
+def create_upload_job(filename, zip_path, exam_type, exam_year, total_pdfs):
+    """Create a new upload job record"""
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    
+    cursor.execute('''
+        INSERT INTO upload_jobs 
+        (filename, zip_path, exam_type, exam_year, total_pdfs, status)
+        VALUES (?, ?, ?, ?, ?, 'UPLOADED')
+    ''', (filename, zip_path, exam_type, exam_year, total_pdfs))
+    
+    conn.commit()
+    job_id = cursor.lastrowid
+    conn.close()
+    return job_id
+
+def get_upload_job(job_id):
+    """Get upload job details by ID"""
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    
+    cursor.execute('SELECT * FROM upload_jobs WHERE id = ?', (job_id,))
+    job = cursor.fetchone()
+    conn.close()
+    return dict(job) if job else None
+
+def update_job_progress(job_id, processed_pdfs, status='PROCESSING'):
+    """Update job progress"""
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    
+    cursor.execute('''
+        UPDATE upload_jobs 
+        SET processed_pdfs = ?, status = ?, updated_at = CURRENT_TIMESTAMP
+        WHERE id = ?
+    ''', (processed_pdfs, status, job_id))
+    
+    conn.commit()
+    conn.close()
+
+def update_job_extract_path(job_id, extract_path):
+    """Update job extract path"""
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    
+    cursor.execute('''
+        UPDATE upload_jobs 
+        SET extract_path = ?, updated_at = CURRENT_TIMESTAMP
+        WHERE id = ?
+    ''', (extract_path, job_id))
+    
+    conn.commit()
+    conn.close()
+
+def get_all_upload_jobs():
+    """Get all upload jobs ordered by creation date"""
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    
+    cursor.execute('''
+        SELECT * FROM upload_jobs 
+        ORDER BY created_at DESC
+    ''')
+    
+    jobs = [dict(row) for row in cursor.fetchall()]
+    conn.close()
+    return jobs
 
 if __name__ == '__main__':
     # Initialize database when run directly

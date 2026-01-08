@@ -74,6 +74,36 @@
                 </div>
                 <div id="progressText" class="progress-text">Uploading: 0%</div>
             </div>
+
+            <!-- NEW: Batch Processing Section -->
+            <div id="processingSection" class="hidden" style="margin-top: 1.5rem;">
+                <div class="alert alert-success">
+                    <strong>✓ Upload Complete!</strong>
+                    <span id="uploadMessage"></span>
+                </div>
+
+                <div class="card" style="margin-top: 1rem;">
+                    <h3 style="margin-bottom: 1rem;">Processing: <span id="jobFilename"></span></h3>
+
+                    <div class="progress-container" style="margin-bottom: 1rem;">
+                        <div id="batchProgressBar" class="progress-bar">0%</div>
+                    </div>
+                    <div id="batchProgressText" class="progress-text">0 / 0 papers (0%)</div>
+
+                    <div style="display: flex; gap: 1rem; margin-top: 1.5rem;">
+                        <button id="processBatchBtn" class="btn btn-primary" style="flex: 1;">
+                            ⚡ Process Next 15 PDFs
+                        </button>
+                        <button id="autoProcessBtn" class="btn btn-secondary" style="flex: 1;">
+                            🚀 Auto Process All
+                        </button>
+                    </div>
+
+                    <div id="processingLog"
+                        style="margin-top: 1rem; padding: 1rem; background: #f8fafc; border-radius: 8px; font-family: monospace; font-size: 0.85rem; max-height: 200px; overflow-y: auto; display: none;">
+                    </div>
+                </div>
+            </div>
         </div>
 
         <!-- Alert Messages -->
