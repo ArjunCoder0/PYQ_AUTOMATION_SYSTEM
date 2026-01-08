@@ -117,8 +117,10 @@ class BatchProcessor:
                     print(f"Error processing {pdf_path}: {e}")
                     continue
             
-            # Update progress
-            new_processed_count = processed_count + successfully_processed
+            # Update progress - count ALL attempted PDFs, not just successful ones
+            # This ensures we move forward even if some PDFs are rejected
+            batch_attempted = len(batch_pdfs)
+            new_processed_count = processed_count + batch_attempted
             new_status = 'COMPLETED' if new_processed_count >= total_count else 'PROCESSING'
             
             update_job_progress(self.job_id, new_processed_count, new_status)
