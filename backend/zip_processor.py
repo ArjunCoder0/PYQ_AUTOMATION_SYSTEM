@@ -342,27 +342,30 @@ class ZIPProcessor:
     
     def _copy_to_storage(self, source_path, metadata):
         """
-        Upload PDF to Cloudinary
-        Returns: Cloudinary URL
+        Copy PDF to local storage
+        Returns: relative file path
         """
         try:
-            from cloud_uploader import CloudUploader
-            
-            # Initialize uploader
-            uploader = CloudUploader()
+            from config import PDF_STORAGE_PATH
+            import shutil
             
             # Generate filename: SubjectCode_SubjectName.pdf
             filename = f"{metadata['subject_code']}_{metadata['subject_name'].replace(' ', '_')}.pdf"
             
-            # Upload to Cloudinary
-            result = uploader.upload_file(source_path, filename)
+            # Ensure storage directory exists
+            os.makedirs(PDF_STORAGE_PATH, exist_ok=True)
             
-            # Return the secure URL to be stored in database
-            return result['view_link']
+            # Copy to storage
+            destination = os.path.join(PDF_STORAGE_PATH, filename)
+            shutil.copy2(source_path, destination)
+            
+            print(f"✓ Copied to local storage: {filename}")
+            
+            # Return relative path (just the filename)
+            return filename
             
         except Exception as e:
-            print(f"CRITICAL ERROR UPLOADING TO CLOUDINARY: {e}")
-            # We can't return the error easily without changing signature, so we count on "new_path" being None
+            print(f"CRITICAL ERROR COPYING FILE: {e}")
             return None
     
     def _cleanup(self, extract_path):

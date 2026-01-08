@@ -24,16 +24,13 @@ class CloudUploader:
             # Remove .pdf extension from filename for public_id
             public_id = filename.replace('.pdf', '')
             
-            # Upload to Cloudinary
-            # Use 'image' resource type with format='pdf' for better browser viewing
+            # Upload to Cloudinary as raw file (for PDFs)
             result = cloudinary.uploader.upload(
                 file_path,
-                resource_type="image",
-                format="pdf",
+                resource_type="raw",  # PDFs must use 'raw' type
                 public_id=public_id,
                 folder="pyq_pdfs",
-                overwrite=True,
-                flags="attachment"  # This allows download
+                overwrite=True
             )
             
             print(f"✓ Uploaded to Cloudinary: {result['secure_url']}")
