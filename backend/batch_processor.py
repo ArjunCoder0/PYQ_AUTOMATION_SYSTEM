@@ -98,6 +98,10 @@ class BatchProcessor:
                     metadata = self.processor._parse_filename(os.path.basename(pdf_path))
                     
                     if metadata:
+                        # Add exam_type and exam_year from job
+                        metadata['exam_type'] = self.job['exam_type']
+                        metadata['exam_year'] = self.job['exam_year']
+                        
                         # Copy to storage
                         new_path = self.processor._copy_to_storage(pdf_path, metadata)
                         
@@ -107,6 +111,7 @@ class BatchProcessor:
                             # Insert to database
                             insert_pyq_file(metadata)
                             successfully_processed += 1
+                            print(f"✓ Successfully processed: {os.path.basename(pdf_path)}")
                             
                 except Exception as e:
                     print(f"Error processing {pdf_path}: {e}")
