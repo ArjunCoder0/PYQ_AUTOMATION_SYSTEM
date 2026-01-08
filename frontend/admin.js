@@ -44,15 +44,24 @@ document.addEventListener('DOMContentLoaded', () => {
 
 // Load most recent job
 async function loadRecentJob() {
+    console.log('Attempting to load recent job...');
     try {
-        const response = await fetch(`${API_BASE_URL}/admin/recent-job`);
+        const url = `${API_BASE_URL}/admin/recent-job`;
+        console.log('Fetching from:', url);
+
+        const response = await fetch(url);
+        console.log('Response status:', response.status);
+
         const data = await response.json();
+        console.log('Response data:', data);
 
         if (data.success && data.job) {
             const job = data.job;
+            console.log('Job found:', job);
 
             // Only auto-load if job is not completed
             if (job.status !== 'COMPLETED') {
+                console.log('Resuming job...');
                 currentJobId = job.id;
 
                 // Hide download section, show processing section
@@ -71,10 +80,14 @@ async function loadRecentJob() {
 
                 addLog(`✓ Resumed job: ${job.filename} (${job.processed_pdfs}/${job.total_pdfs})`);
                 showAlert(`Resumed previous job: ${job.filename}`, 'info');
+            } else {
+                console.log('Job already completed, not resuming');
             }
+        } else {
+            console.log('No job to resume');
         }
     } catch (error) {
-        console.log('No recent job to load:', error);
+        console.error('Error loading recent job:', error);
     }
 }
 
