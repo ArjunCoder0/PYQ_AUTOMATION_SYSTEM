@@ -1,6 +1,6 @@
 /**
- * Frontend JavaScript for Admin Panel - Chunked Upload Architecture
- * Handles ZIP file upload and batch processing
+ * Frontend JavaScript for Admin Panel - Out-of-Band ZIP Ingestion
+ * Handles server-side ZIP download from URLs and batch processing
  */
 
 // Dynamically set API URL based on environment
@@ -12,8 +12,7 @@ const API_BASE_URL = window.location.hostname === 'localhost' || window.location
 const uploadForm = document.getElementById('uploadForm');
 const examTypeSelect = document.getElementById('examType');
 const examYearInput = document.getElementById('examYear');
-const zipFileInput = document.getElementById('zipFile');
-const fileNameDisplay = document.getElementById('fileNameDisplay');
+const zipUrlInput = document.getElementById('zipUrl');
 const uploadBtn = document.getElementById('uploadBtn');
 const progressSection = document.getElementById('progressSection');
 const processingSection = document.getElementById('processingSection');
@@ -40,8 +39,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
 // Setup event listeners
 function setupEventListeners() {
-    uploadForm.addEventListener('submit', handleUpload);
-    zipFileInput.addEventListener('change', handleFileSelect);
+    uploadForm.addEventListener('submit', handleFetchZip);
     processBatchBtn.addEventListener('click', processSingleBatch);
     autoProcessBtn.addEventListener('click', toggleAutoProcess);
 }
@@ -52,56 +50,44 @@ function setDefaultYear() {
     examYearInput.value = currentYear;
 }
 
-// Handle file selection
-function handleFileSelect(event) {
-    const file = event.target.files[0];
-    if (file) {
-        const fileSizeMB = (file.size / (1024 * 1024)).toFixed(2);
-        fileNameDisplay.innerHTML = `
-            <strong>${file.name}</strong><br>
-            <span style="font-size: 0.9rem; color: #64748b;">Size: ${fileSizeMB} MB</span>
-        `;
-    } else {
-        fileNameDisplay.textContent = 'Click to select ZIP file';
-    }
-}
-
-// Handle upload
-async function handleUpload(event) {
+// Handle ZIP fetch from URL
+async function handleFetchZip(event) {
     event.preventDefault();
 
-    // Validate form
+    // Get form values
     const examType = examTypeSelect.value;
     const examYear = examYearInput.value;
-    const file = zipFileInput.files[0];
+    const zipUrl = zipUrlInput.value;
 
-    if (!examType || !examYear || !file) {
+    // Validate inputs
+    if (!examType || !examYear || !zipUrl) {
         showAlert('Please fill all required fields', 'error');
         return;
     }
 
-    // Validate file type
-    if (!file.name.toLowerCase().endsWith('.zip')) {
-        showAlert('Please select a ZIP file', 'error');
+    // Validate URL format
+    if (!zipUrl.startsWith('http://') && !zipUrl.startsWith('https://')) {
+        showAlert('Please enter a valid HTTP/HTTPS URL', 'error');
         return;
     }
 
     // Prepare UI
     uploadBtn.disabled = true;
-    uploadBtn.textContent = '⏳ Uploading...';
+    uploadBtn.textContent = '⏳ Downloading from server...';
     progressSection.classList.remove('hidden');
 
     try {
-        // Prepare form data
-        const formData = new FormData();
-        formData.append('file', file);
-        formData.append('exam_type', examType);
-        formData.append('exam_year', examYear);
-
-        // Upload file
-        const response = await fetch(`${API_BASE_URL}/admin/upload`, {
+        // Call fetch-zip endpoint
+        const response = await fetch(`${API_BASE_URL}/admin/fetch-zip`, {
             method: 'POST',
-            body: formData
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                url: zipUrl,
+                exam_type: examType,
+                exam_year: examYear
+            })
         });
 
         const data = await response.json();
@@ -117,29 +103,33 @@ async function handleUpload(event) {
             uploadMessage.textContent = data.message;
 
             // Update progress (total will be 0 until first batch)
-            const totalText = data.total_pdfs > 0 ? data.total_pdfs : '?';
             updateProgress(0, data.total_pdfs || 1, 0);
             batchProgressText.textContent = `Ready to process (click button to start)`;
 
             // Add log
-            addLog(`✓ Upload complete: ${data.filename}`);
+            const sizeInfo = data.file_size_mb ? ` (${data.file_size_mb} MB)` : '';
+            addLog(`✓ Downloaded: ${data.filename}${sizeInfo}`);
 
             showAlert(data.message, 'success');
         } else {
-            throw new Error(data.error || 'Upload failed');
+            throw new Error(data.error || 'Download failed');
         }
     } catch (error) {
-        showAlert(`Upload failed: ${error.message}`, 'error');
-        progressSection.classList.add('hidden');
+        showAlert(`Error: ${error.message}`, 'error');
+        addLog(`❌ Error: ${error.message}`);
     } finally {
         uploadBtn.disabled = false;
-        uploadBtn.textContent = '📤 Upload and Process';
+        uploadBtn.textContent = '� Fetch ZIP from Server';
+        progressSection.classList.add('hidden');
     }
 }
 
 // Process single batch
 async function processSingleBatch() {
-    if (!currentJobId) return;
+    if (!currentJobId) {
+        showAlert('No job selected', 'error');
+        return;
+    }
 
     processBatchBtn.disabled = true;
     processBatchBtn.textContent = '⏳ Processing...';
@@ -170,36 +160,39 @@ async function processSingleBatch() {
             throw new Error(data.error || 'Processing failed');
         }
     } catch (error) {
-        showAlert(`Processing failed: ${error.message}`, 'error');
-        addLog(`✗ Error: ${error.message}`);
+        showAlert(`Error: ${error.message}`, 'error');
+        addLog(`❌ Error: ${error.message}`);
     } finally {
         processBatchBtn.disabled = false;
         processBatchBtn.textContent = '⚡ Process Next 15 PDFs';
     }
 }
 
-// Toggle auto-process
+// Toggle auto-processing
 async function toggleAutoProcess() {
-    if (isAutoProcessing) {
-        // Stop auto-processing
-        isAutoProcessing = false;
-        autoProcessBtn.textContent = '🚀 Auto Process All';
-        processBatchBtn.disabled = false;
-        addLog('Auto-processing stopped');
-    } else {
-        // Start auto-processing
-        isAutoProcessing = true;
-        autoProcessBtn.textContent = '⏸️ Stop Auto Process';
-        processBatchBtn.disabled = true;
-        addLog('Auto-processing started...');
+    isAutoProcessing = !isAutoProcessing;
 
-        await autoProcessAll();
+    if (isAutoProcessing) {
+        autoProcessBtn.textContent = '⏸ Stop Auto Process';
+        autoProcessBtn.classList.add('btn-danger');
+        autoProcessBtn.classList.remove('btn-secondary');
+        processBatchBtn.disabled = true;
+
+        addLog('🔄 Auto-processing started...');
+        await autoProcessLoop();
+    } else {
+        autoProcessBtn.textContent = '🔄 Auto Process All';
+        autoProcessBtn.classList.remove('btn-danger');
+        autoProcessBtn.classList.add('btn-secondary');
+        processBatchBtn.disabled = false;
+
+        addLog('⏸ Auto-processing stopped');
     }
 }
 
-// Auto-process all batches
-async function autoProcessAll() {
-    while (isAutoProcessing && currentJobId) {
+// Auto-process loop
+async function autoProcessLoop() {
+    while (isAutoProcessing) {
         try {
             const response = await fetch(`${API_BASE_URL}/admin/process-batch/${currentJobId}`, {
                 method: 'POST'
@@ -213,61 +206,61 @@ async function autoProcessAll() {
 
                 if (data.status === 'COMPLETED') {
                     isAutoProcessing = false;
-                    autoProcessBtn.textContent = '✓ Complete';
-                    autoProcessBtn.disabled = true;
+                    autoProcessBtn.textContent = '🔄 Auto Process All';
+                    autoProcessBtn.classList.remove('btn-danger');
+                    autoProcessBtn.classList.add('btn-secondary');
                     processBatchBtn.disabled = true;
+                    autoProcessBtn.disabled = true;
                     showAlert('✓ All PDFs processed successfully!', 'success');
-                    addLog('✓ All processing complete!');
+                    addLog('✓ Auto-processing complete!');
                     break;
                 }
-
-                // Wait 1 second between batches
-                await new Promise(resolve => setTimeout(resolve, 1000));
             } else {
                 throw new Error(data.error || 'Processing failed');
             }
         } catch (error) {
             isAutoProcessing = false;
-            autoProcessBtn.textContent = '🚀 Auto Process All';
+            autoProcessBtn.textContent = '� Auto Process All';
+            autoProcessBtn.classList.remove('btn-danger');
+            autoProcessBtn.classList.add('btn-secondary');
             processBatchBtn.disabled = false;
-            showAlert(`Processing failed: ${error.message}`, 'error');
-            addLog(`✗ Error: ${error.message}`);
+            showAlert(`Error: ${error.message}`, 'error');
+            addLog(`❌ Auto-processing error: ${error.message}`);
             break;
         }
+
+        // Wait 1 second between batches
+        await new Promise(resolve => setTimeout(resolve, 1000));
     }
 }
 
-// Update progress UI
+// Update progress bar
 function updateProgress(processed, total, percentage) {
     batchProgressBar.style.width = `${percentage}%`;
     batchProgressBar.textContent = `${percentage}%`;
-    batchProgressText.textContent = `${processed} / ${total} papers (${percentage}%)`;
+    batchProgressText.textContent = `${processed} / ${total} PDFs (${percentage}%)`;
 }
 
 // Add log entry
 function addLog(message) {
-    processingLog.style.display = 'block';
     const timestamp = new Date().toLocaleTimeString();
     const logEntry = document.createElement('div');
     logEntry.textContent = `[${timestamp}] ${message}`;
-    logEntry.style.marginBottom = '0.25rem';
     processingLog.appendChild(logEntry);
     processingLog.scrollTop = processingLog.scrollHeight;
 }
 
 // Show alert
 function showAlert(message, type = 'info') {
-    const alertDiv = document.createElement('div');
-    alertDiv.className = `alert alert-${type}`;
-    alertDiv.innerHTML = `
-        <strong>${type === 'error' ? '❌' : type === 'success' ? '✓' : 'ℹ️'}</strong> ${message}
-    `;
+    const alert = document.createElement('div');
+    alert.className = `alert alert-${type}`;
+    alert.textContent = message;
 
     alertContainer.innerHTML = '';
-    alertContainer.appendChild(alertDiv);
+    alertContainer.appendChild(alert);
 
-    // Auto-remove after 5 seconds
+    // Auto-dismiss after 5 seconds
     setTimeout(() => {
-        alertDiv.remove();
+        alert.remove();
     }, 5000);
 }
