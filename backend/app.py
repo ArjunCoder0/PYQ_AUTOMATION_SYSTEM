@@ -34,6 +34,10 @@ except Exception as e:
     print(f"⚠️ Database initialization error: {e}")
     print("Continuing without database initialization...")
 
+# Create directories after database init
+from config import ensure_directories
+ensure_directories()
+
 def allowed_file(filename):
     """Check if file extension is allowed"""
     return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS

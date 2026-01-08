@@ -21,10 +21,6 @@ CLOUDINARY_API_SECRET = os.environ.get('CLOUDINARY_API_SECRET', '')
 ALLOWED_EXTENSIONS = {'zip'}
 MAX_FILE_SIZE = 1024 * 1024 * 1024  # 1GB
 
-# Ensure directories exist
-os.makedirs(UPLOAD_FOLDER, exist_ok=True)
-os.makedirs(PDF_STORAGE_PATH, exist_ok=True)
-
 # Supported branches
 BRANCHES = ['CSE', 'IT', 'ME', 'CE', 'EE', 'ECE']
 
@@ -33,3 +29,12 @@ SEMESTER_MAPPING = {
     'I': 1, 'II': 2, 'III': 3, 'IV': 4,
     'V': 5, 'VI': 6, 'VII': 7, 'VIII': 8
 }
+
+def ensure_directories():
+    """Create necessary directories if they don't exist"""
+    try:
+        os.makedirs(UPLOAD_FOLDER, exist_ok=True)
+        os.makedirs(PDF_STORAGE_PATH, exist_ok=True)
+        print(f"✓ Created directories: {UPLOAD_FOLDER}, {PDF_STORAGE_PATH}")
+    except Exception as e:
+        print(f"⚠️ Could not create directories: {e}")
