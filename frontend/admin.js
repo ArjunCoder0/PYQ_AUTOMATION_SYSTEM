@@ -39,7 +39,44 @@ let statusPollInterval = null;
 document.addEventListener('DOMContentLoaded', () => {
     setupEventListeners();
     setDefaultYear();
+    loadRecentJob(); // Auto-load most recent job if exists
 });
+
+// Load most recent job
+async function loadRecentJob() {
+    try {
+        const response = await fetch(`${API_BASE_URL}/admin/recent-job`);
+        const data = await response.json();
+
+        if (data.success && data.job) {
+            const job = data.job;
+
+            // Only auto-load if job is not completed
+            if (job.status !== 'COMPLETED') {
+                currentJobId = job.id;
+
+                // Hide download section, show processing section
+                downloadProgress.classList.add('hidden');
+                processingSection.classList.remove('hidden');
+
+                // Set job info
+                jobFilename.textContent = job.filename;
+                uploadMessage.textContent = `Resuming job: ${job.filename}`;
+
+                // Update progress
+                const percentage = job.total_pdfs > 0
+                    ? Math.round((job.processed_pdfs / job.total_pdfs) * 100)
+                    : 0;
+                updateProgress(job.processed_pdfs, job.total_pdfs, percentage);
+
+                addLog(`✓ Resumed job: ${job.filename} (${job.processed_pdfs}/${job.total_pdfs})`);
+                showAlert(`Resumed previous job: ${job.filename}`, 'info');
+            }
+        }
+    } catch (error) {
+        console.log('No recent job to load:', error);
+    }
+}
 
 // Setup event listeners
 function setupEventListeners() {

@@ -260,6 +260,42 @@ def process_batch(job_id):
     except Exception as e:
         return jsonify({'success': False, 'error': str(e)}), 500
 
+
+@app.route('/api/admin/recent-job', methods=['GET'])
+def get_recent_job():
+    """Get the most recent upload job"""
+    try:
+        from database import get_db_connection
+        
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        cursor.execute('''
+            SELECT id, filename, status, total_pdfs, processed_pdfs 
+            FROM upload_jobs 
+            ORDER BY created_at DESC 
+            LIMIT 1
+        ''')
+        
+        row = cursor.fetchone()
+        conn.close()
+        
+        if row:
+            return jsonify({
+                'success': True,
+                'job': {
+                    'id': row[0],
+                    'filename': row[1],
+                    'status': row[2],
+                    'total_pdfs': row[3],
+                    'processed_pdfs': row[4]
+                }
+            })
+        else:
+            return jsonify({'success': False, 'message': 'No jobs found'})
+            
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
 @app.route('/api/admin/job-status/<int:job_id>', methods=['GET'])
 def get_job_status(job_id):
     """Get current status of an upload job"""
