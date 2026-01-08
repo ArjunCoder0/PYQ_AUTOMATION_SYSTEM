@@ -1,1 +1,1 @@
-web: cd backend && python -m waitress --port=$PORT --call app:app
+web: cd backend && waitress-serve --port=$PORT app:app
