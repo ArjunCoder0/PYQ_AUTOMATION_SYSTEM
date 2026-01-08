@@ -38,6 +38,7 @@ def init_database():
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             filename TEXT NOT NULL,
             zip_path TEXT NOT NULL,
+            zip_url TEXT,
             extract_path TEXT,
             exam_type TEXT NOT NULL,
             exam_year INTEGER NOT NULL,
@@ -164,16 +165,16 @@ def get_file_by_id(file_id):
 
 # ==================== UPLOAD JOBS FUNCTIONS ====================
 
-def create_upload_job(filename, zip_path, exam_type, exam_year, total_pdfs):
+def create_upload_job(filename, zip_path, exam_type, exam_year, total_pdfs, zip_url=None):
     """Create a new upload job record"""
     conn = get_db_connection()
     cursor = conn.cursor()
     
     cursor.execute('''
         INSERT INTO upload_jobs 
-        (filename, zip_path, exam_type, exam_year, total_pdfs, status)
-        VALUES (?, ?, ?, ?, ?, 'UPLOADED')
-    ''', (filename, zip_path, exam_type, exam_year, total_pdfs))
+        (filename, zip_path, zip_url, exam_type, exam_year, total_pdfs, status)
+        VALUES (?, ?, ?, ?, ?, ?, 'UPLOADED')
+    ''', (filename, zip_path, zip_url, exam_type, exam_year, total_pdfs))
     
     conn.commit()
     job_id = cursor.lastrowid

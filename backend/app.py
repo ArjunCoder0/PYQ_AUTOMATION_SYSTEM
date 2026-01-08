@@ -146,6 +146,60 @@ def admin_upload():
     except Exception as e:
         return jsonify({'success': False, 'error': str(e)}), 500
 
+@app.route('/api/admin/fetch-zip', methods=['POST'])
+def fetch_zip():
+    """
+    NEW: Fetch ZIP from URL (server-side download)
+    Bypasses browser upload limitations
+    Returns: job_id for batch processing
+    """
+    try:
+        from database import create_upload_job
+        from zip_fetcher import fetch_zip_from_url, validate_zip_url
+        
+        # Get request data
+        data = request.get_json()
+        zip_url = data.get('url')
+        exam_type = data.get('exam_type')
+        exam_year = data.get('exam_year')
+        
+        # Validate inputs
+        if not zip_url or not exam_type or not exam_year:
+            return jsonify({'success': False, 'error': 'URL, exam type, and year required'}), 400
+        
+        if not validate_zip_url(zip_url):
+            return jsonify({'success': False, 'error': 'Invalid URL format'}), 400
+        
+        # Generate filename
+        filename = f"{exam_type}_{exam_year}.zip"
+        
+        # Download ZIP from URL (server-side)
+        print(f"Downloading ZIP from: {zip_url}")
+        zip_path, file_size = fetch_zip_from_url(zip_url, filename)
+        
+        # Check file size
+        if file_size > MAX_FILE_SIZE:
+            os.remove(zip_path)
+            return jsonify({'success': False, 'error': 'File too large (max 1GB)'}), 400
+        
+        # Create job record (extraction will happen on first batch process)
+        job_id = create_upload_job(filename, zip_path, exam_type, int(exam_year), 0, zip_url=zip_url)
+        
+        return jsonify({
+            'success': True,
+            'job_id': job_id,
+            'filename': filename,
+            'file_size': file_size,
+            'file_size_mb': round(file_size / (1024*1024), 2),
+            'total_pdfs': 0,  # Will be counted on first batch
+            'status': 'UPLOADED',
+            'message': f'ZIP downloaded successfully ({round(file_size / (1024*1024), 2)} MB)! Click "Process Next Batch" to start.'
+        }), 200
+    
+    except Exception as e:
+        print(f"Error fetching ZIP: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
 @app.route('/api/admin/process-batch/<int:job_id>', methods=['POST'])
 def process_batch(job_id):
     """
