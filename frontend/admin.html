@@ -5,7 +5,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Admin Panel - PYQ Management System</title>
-    <meta name="description" content="Admin panel for uploading and managing engineering question papers">
+    <meta name="description" content="Admin panel for fetching and managing engineering question papers">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -16,22 +16,25 @@
     <!-- Header -->
     <header class="header">
         <h1>🔐 Admin Panel</h1>
-        <p>Upload and Manage Question Papers</p>
+        <p>Fetch and Manage Question Papers</p>
     </header>
 
     <div class="container">
-        <!-- Upload Section -->
+        <!-- Fetch Section -->
         <div class="card">
-            <h2 class="section-title">Upload ZIP File</h2>
-            <button type="button"
-                onclick="document.getElementById('urlGroup').style.display='block'; document.getElementById('zipFile').required=false">Use
-                URL Instead</button>
+            <h2 class="section-title">🔗 Fetch ZIP from University Server</h2>
+            <div class="alert alert-info" style="margin-bottom: 1.5rem;">
+                <strong>ℹ️ Server-Side Download</strong><br>
+                Paste the university's direct ZIP download link below. The server will download it directly, bypassing
+                browser upload timeouts. Works for files up to 1GB.
+            </div>
+
             <form id="uploadForm">
                 <!-- Exam Type -->
                 <div class="form-group">
-                    <label class="form-label" for="examType">Exam Type *</label>
+                    <label class="form-label" for="examType">Exam Session *</label>
                     <select id="examType" class="form-control" required>
-                        <option value="">-- Select Exam Type --</option>
+                        <option value="">-- Select Exam Session --</option>
                         <option value="Summer">Summer</option>
                         <option value="Winter">Winter</option>
                     </select>
@@ -43,121 +46,101 @@
                     <input type="number" id="examYear" class="form-control" placeholder="e.g., 2025" min="2000"
                         max="2100" required>
                 </div>
+
                 <!-- URL Input -->
-                <div class="form-group" id="urlGroup" style="display:none;">
-                    <label>University ZIP URL *</label>
-                    <input type="url" id="zipUrl" class="form-control" placeholder="https://...">
-                    <small>Direct download link (bypasses upload timeout)</small>
-                </div>
-
-                <!-- File Upload -->
                 <div class="form-group">
-                    <label class="form-label">ZIP File *</label>
-                    <div class="file-upload">
-                        <input type="file" id="zipFile" accept=".zip" required>
-                        <label for="zipFile" class="file-upload-label">
-                            <div style="font-size: 2rem; margin-bottom: 0.5rem;">📁</div>
-                            <div id="fileNameDisplay">Click to select ZIP file</div>
-                            <div style="font-size: 0.85rem; color: #64748b; margin-top: 0.5rem;">
-                                Maximum file size: 500 MB
-                            </div>
-                        </label>
-                    </div>
+                    <label class="form-label" for="zipUrl">University ZIP URL *</label>
+                    <input type="url" id="zipUrl" class="form-control"
+                        placeholder="https://university.edu/exams/ScienceTechnology_Summer2025.zip" required>
+                    <small style="color: #64748b; display: block; margin-top: 0.5rem;">
+                        📌 Paste the direct download link from the university website
+                    </small>
                 </div>
 
-                <!-- Upload Button -->
+                <!-- Fetch Button -->
                 <button type="submit" id="uploadBtn" class="btn btn-primary btn-block">
-                    📤 Upload and Process
+                    🔗 Fetch ZIP from Server
                 </button>
             </form>
 
-            <!-- Progress Section -->
-            <div id="progressSection" class="hidden" style="margin-top: 1.5rem;">
+            <!-- Download Progress -->
+            <div id="downloadProgress" class="hidden" style="margin-top: 1.5rem;">
                 <div class="alert alert-info">
-                    <strong>Processing...</strong> Uploading and analyzing papers. Please do not close this window.
+                    <strong>⏳ Downloading...</strong><br>
+                    <span id="downloadMessage">Server is downloading the ZIP file. This may take a few minutes for large
+                        files.</span>
                 </div>
-
                 <div class="progress-container">
-                    <div id="progressBar" class="progress-bar">0%</div>
+                    <div id="downloadBar" class="progress-bar">Starting...</div>
                 </div>
-                <div id="progressText" class="progress-text">Uploading: 0%</div>
-            </div>
-
-            <!-- NEW: Batch Processing Section -->
-            <div id="processingSection" class="hidden" style="margin-top: 1.5rem;">
-                <div class="alert alert-success">
-                    <strong>✓ Upload Complete!</strong>
-                    <span id="uploadMessage"></span>
-                </div>
-
-                <div class="card" style="margin-top: 1rem;">
-                    <h3 style="margin-bottom: 1rem;">Processing: <span id="jobFilename"></span></h3>
-
-                    <div class="progress-container" style="margin-bottom: 1rem;">
-                        <div id="batchProgressBar" class="progress-bar">0%</div>
-                    </div>
-                    <div id="batchProgressText" class="progress-text">0 / 0 papers (0%)</div>
-
-                    <div style="display: flex; gap: 1rem; margin-top: 1.5rem;">
-                        <button id="processBatchBtn" class="btn btn-primary" style="flex: 1;">
-                            ⚡ Process Next 15 PDFs
-                        </button>
-                        <button id="autoProcessBtn" class="btn btn-secondary" style="flex: 1;">
-                            🚀 Auto Process All
-                        </button>
-                    </div>
-
-                    <div id="processingLog"
-                        style="margin-top: 1rem; padding: 1rem; background: #f8fafc; border-radius: 8px; font-family: monospace; font-size: 0.85rem; max-height: 200px; overflow-y: auto; display: none;">
-                    </div>
-                </div>
+                <div id="downloadText" class="progress-text">Initializing download...</div>
             </div>
         </div>
 
-        <!-- Alert Messages -->
-        <div id="alertContainer"></div>
+        <!-- Processing Section -->
+        <div id="processingSection" class="hidden card" style="margin-top: 1.5rem;">
+            <div class="alert alert-success">
+                <strong>✓ Download Complete!</strong>
+                <p id="uploadMessage"></p>
+            </div>
+
+            <h3 style="margin-bottom: 1rem;">Processing: <span id="jobFilename"></span></h3>
+
+            <div class="progress-container">
+                <div id="batchProgressBar" class="progress-bar">0%</div>
+            </div>
+            <div id="batchProgressText" class="progress-text">0 / 0 PDFs (0%)</div>
+
+            <div style="display: flex; gap: 1rem; margin-top: 1.5rem;">
+                <button id="processBatchBtn" class="btn btn-primary">
+                    ⚡ Process Next 15 PDFs
+                </button>
+                <button id="autoProcessBtn" class="btn btn-secondary">
+                    🔄 Auto Process All
+                </button>
+            </div>
+
+            <!-- Processing Log -->
+            <div style="margin-top: 1.5rem;">
+                <h4>Processing Log</h4>
+                <div id="processingLog" class="processing-log"></div>
+            </div>
+        </div>
+
+        <!-- Alert Container -->
+        <div id="alertContainer" style="margin-top: 1.5rem;"></div>
 
         <!-- Instructions -->
-        <div class="card">
-            <h2 class="section-title">📋 Instructions</h2>
-            <div style="line-height: 1.8;">
-                <p><strong>1. Prepare ZIP File:</strong></p>
-                <ul style="margin-left: 1.5rem; margin-bottom: 1rem;">
-                    <li>ZIP file should contain PDF files of question papers</li>
-                    <li>PDFs can be in any folder structure inside the ZIP</li>
-                    <li>Maximum file size: 500 MB</li>
-                </ul>
-
-                <p><strong>2. PDF Filename Format:</strong></p>
-                <ul style="margin-left: 1.5rem; margin-bottom: 1rem;">
-                    <li>Must contain: <code>B.Tech</code> OR <code>B.E</code> OR <code>Model Curriculum</code></li>
-                    <li>Must include branch: CSE, IT, ME, CE, EE, ECE</li>
-                    <li>Must include semester: I, II, III, IV, V, VI, VII, VIII (Roman numerals)</li>
-                    <li>Must include subject code: BSCxxx, ESCxxx, PCCxxx, HSMCxxx, MCxxx</li>
-                </ul>
-
-                <p><strong>3. Example Valid Filenames:</strong></p>
-                <ul style="margin-left: 1.5rem; margin-bottom: 1rem;">
-                    <li><code>B.Tech_CSE_III_Sem_BSC301_Data_Structures.pdf</code></li>
-                    <li><code>B.E._ME_V_Semester_ESC501_Thermodynamics.pdf</code></li>
-                    <li><code>Model_Curriculum_IT_VII_PCC701_Machine_Learning.pdf</code></li>
-                </ul>
-
-                <p><strong>4. Processing:</strong></p>
-                <ul style="margin-left: 1.5rem;">
-                    <li>System will automatically filter B.Tech/B.E papers only</li>
-                    <li>Non-engineering papers will be ignored</li>
-                    <li>Invalid filenames will be skipped</li>
-                    <li>Valid papers will be stored and made available to students</li>
-                </ul>
+        <div class="card" style="margin-top: 2rem;">
+            <h3>📋 Instructions</h3>
+            <ol style="line-height: 1.8;">
+                <li><strong>Prepare ZIP URL:</strong>
+                    <ul>
+                        <li>Go to university website</li>
+                        <li>Find the question paper ZIP file</li>
+                        <li>Copy the direct download link</li>
+                    </ul>
+                </li>
+                <li><strong>Fetch ZIP:</strong>
+                    <ul>
+                        <li>Select exam session (Summer/Winter) and year</li>
+                        <li>Paste the ZIP URL</li>
+                        <li>Click "Fetch ZIP from Server"</li>
+                        <li>Wait for download to complete (progress shown above)</li>
+                    </ul>
+                </li>
+                <li><strong>Process PDFs:</strong>
+                    <ul>
+                        <li>Click "Process Next 15 PDFs" to process in batches</li>
+                        <li>OR click "Auto Process All" to process automatically</li>
+                        <li>Watch the progress bar and log for updates</li>
+                    </ul>
+                </li>
+            </ol>
+            <div class="alert alert-info" style="margin-top: 1rem;">
+                <strong>💡 Tip:</strong> The server downloads the ZIP file directly, so even 100MB+ files work
+                perfectly. No browser upload timeout!
             </div>
-        </div>
-
-        <!-- Back to Student Portal -->
-        <div style="text-align: center; margin-top: 2rem;">
-            <a href="index.html" style="color: white; text-decoration: none; font-weight: 500;">
-                ← Back to Student Portal
-            </a>
         </div>
     </div>
 
