@@ -233,10 +233,11 @@ def view_pdf(file_id):
         if not file_data:
             return jsonify({'success': False, 'error': 'File not found'}), 404
         
-        # If it's a Drive URL, redirect to it
+        # If it's a Cloudinary URL (starts with http), redirect to it
         if file_data['file_path'].startswith('http'):
             return redirect(file_data['file_path'])
         
+        # Fallback for local files (legacy support)
         pdf_path = os.path.join(PDF_STORAGE_PATH, file_data['file_path'])
         
         if not os.path.exists(pdf_path):
@@ -254,10 +255,11 @@ def download_pdf(file_id):
         if not file_data:
             return jsonify({'success': False, 'error': 'File not found'}), 404
         
-        # If it's a Drive URL, redirect to it
+        # If it's a Cloudinary URL (starts with http), redirect to it
         if file_data['file_path'].startswith('http'):
             return redirect(file_data['file_path'])
         
+        # Fallback for local files (legacy support)
         pdf_path = os.path.join(PDF_STORAGE_PATH, file_data['file_path'])
         
         if not os.path.exists(pdf_path):
