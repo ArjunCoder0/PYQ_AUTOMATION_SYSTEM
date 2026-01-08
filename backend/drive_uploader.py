@@ -12,9 +12,27 @@ class DriveUploader:
     
     def __init__(self):
         self.creds = None
-        if os.path.exists(GOOGLE_CREDENTIALS_PATH):
+        
+        # Try to load from environment variable first (for Railway)
+        import json
+        creds_json = os.environ.get('GOOGLE_CREDENTIALS')
+        
+        if creds_json:
+            # Load from environment variable
+            try:
+                creds_dict = json.loads(creds_json)
+                self.creds = service_account.Credentials.from_service_account_info(
+                    creds_dict, scopes=self.SCOPES)
+            except Exception as e:
+                print(f"Error loading credentials from environment: {e}")
+        elif os.path.exists(GOOGLE_CREDENTIALS_PATH):
+            # Fall back to file (for local development)
             self.creds = service_account.Credentials.from_service_account_file(
                 GOOGLE_CREDENTIALS_PATH, scopes=self.SCOPES)
+        
+        if not self.creds:
+            raise Exception("Google credentials not found! Set GOOGLE_CREDENTIALS environment variable or provide google-credentials.json file.")
+            
         self.service = build('drive', 'v3', credentials=self.creds)
         
     def upload_file(self, file_path, filename, folder_id=None):
