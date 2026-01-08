@@ -25,12 +25,15 @@ class CloudUploader:
             public_id = filename.replace('.pdf', '')
             
             # Upload to Cloudinary
+            # Use 'image' resource type with format='pdf' for better browser viewing
             result = cloudinary.uploader.upload(
                 file_path,
-                resource_type="raw",  # For PDFs
+                resource_type="image",
+                format="pdf",
                 public_id=public_id,
                 folder="pyq_pdfs",
-                overwrite=True
+                overwrite=True,
+                flags="attachment"  # This allows download
             )
             
             print(f"✓ Uploaded to Cloudinary: {result['secure_url']}")
