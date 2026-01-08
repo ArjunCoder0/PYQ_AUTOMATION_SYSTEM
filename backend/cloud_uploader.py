@@ -30,7 +30,8 @@ class CloudUploader:
                 resource_type="raw",  # PDFs must use 'raw' type
                 public_id=public_id,
                 folder="pyq_pdfs",
-                overwrite=True
+                overwrite=True,
+                timeout=60  # 60 second timeout per file
             )
             
             print(f"✓ Uploaded to Cloudinary: {result['secure_url']}")
