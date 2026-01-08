@@ -19,7 +19,7 @@ CLOUDINARY_API_SECRET = os.environ.get('CLOUDINARY_API_SECRET', '')
 
 # File upload settings
 ALLOWED_EXTENSIONS = {'zip'}
-MAX_FILE_SIZE = 500 * 1024 * 1024  # 500 MB
+MAX_FILE_SIZE = 1024 * 1024 * 1024  # 1GB
 
 # Ensure directories exist
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)

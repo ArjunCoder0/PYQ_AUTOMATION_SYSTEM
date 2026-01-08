@@ -1,1 +1,1 @@
-web: cd backend && gunicorn app:app --bind 0.0.0.0:$PORT --timeout 600
+web: cd backend && gunicorn app:app --bind 0.0.0.0:$PORT --timeout 1200
