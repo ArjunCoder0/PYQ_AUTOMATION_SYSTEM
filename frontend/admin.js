@@ -116,11 +116,13 @@ async function handleUpload(event) {
             jobFilename.textContent = data.filename;
             uploadMessage.textContent = data.message;
 
-            // Update progress
-            updateProgress(0, data.total_pdfs, 0);
+            // Update progress (total will be 0 until first batch)
+            const totalText = data.total_pdfs > 0 ? data.total_pdfs : '?';
+            updateProgress(0, data.total_pdfs || 1, 0);
+            batchProgressText.textContent = `Ready to process (click button to start)`;
 
             // Add log
-            addLog(`✓ Upload complete: ${data.total_pdfs} PDFs found`);
+            addLog(`✓ Upload complete: ${data.filename}`);
 
             showAlert(data.message, 'success');
         } else {
@@ -151,7 +153,12 @@ async function processSingleBatch() {
 
         if (data.success) {
             updateProgress(data.processed, data.total, data.percentage);
-            addLog(`Processed batch: ${data.batch_processed} PDFs (${data.processed}/${data.total})`);
+
+            // Update text with actual total after first batch
+            const statusText = data.status === 'COMPLETED'
+                ? '✓ Complete!'
+                : `Processed batch: ${data.batch_processed} PDFs`;
+            addLog(statusText + ` (${data.processed}/${data.total})`);
 
             if (data.status === 'COMPLETED') {
                 processBatchBtn.disabled = true;
