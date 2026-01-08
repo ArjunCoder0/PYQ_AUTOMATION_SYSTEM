@@ -89,12 +89,11 @@ def process_zip_background(task_id, zip_path, exam_type, exam_year):
 @app.route('/api/admin/upload', methods=['POST'])
 def admin_upload():
     """
-    NEW: Upload ZIP and create job (no processing)
+    NEW: Upload ZIP and create job (no extraction, no processing)
     Returns: job_id for batch processing
     """
     try:
         from database import create_upload_job
-        from batch_processor import BatchProcessor
         
         # Validate request
         if 'file' not in request.files:
@@ -123,30 +122,16 @@ def admin_upload():
             os.remove(zip_path)
             return jsonify({'success': False, 'error': 'File too large (max 1GB)'}), 400
         
-        # Extract ZIP and count PDFs
-        processor = BatchProcessor.__new__(BatchProcessor)
-        processor.job_id = None
-        processor.job = {'zip_path': zip_path, 'exam_type': exam_type, 'exam_year': int(exam_year)}
-        processor.processor = ZIPProcessor(zip_path, exam_type, int(exam_year))
-        
-        extract_path = processor.processor._extract_zip()
-        pdf_files = processor.processor._find_pdfs(extract_path)
-        total_pdfs = len(pdf_files)
-        
-        # Create job record
-        job_id = create_upload_job(filename, zip_path, exam_type, int(exam_year), total_pdfs)
-        
-        # Update with extract path
-        from database import update_job_extract_path
-        update_job_extract_path(job_id, extract_path)
+        # Create job record (extraction will happen on first batch process)
+        job_id = create_upload_job(filename, zip_path, exam_type, int(exam_year), 0)
         
         return jsonify({
             'success': True,
             'job_id': job_id,
             'filename': filename,
-            'total_pdfs': total_pdfs,
+            'total_pdfs': 0,  # Will be counted on first batch
             'status': 'UPLOADED',
-            'message': f'Upload complete! Found {total_pdfs} PDFs. Ready to process.'
+            'message': f'Upload complete! Click "Process Next Batch" to start.'
         }), 200
     
     except Exception as e:
