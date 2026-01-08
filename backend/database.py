@@ -50,6 +50,18 @@ def init_database():
         )
     ''')
     
+    # Migration: Add zip_url column if it doesn't exist in existing databases
+    try:
+        cursor.execute("PRAGMA table_info(upload_jobs)")
+        columns = [row[1] for row in cursor.fetchall()]
+        
+        if 'zip_url' not in columns:
+            print("Running migration: Adding zip_url column to upload_jobs...")
+            cursor.execute('ALTER TABLE upload_jobs ADD COLUMN zip_url TEXT')
+            print("✓ Migration complete: zip_url column added")
+    except Exception as e:
+        print(f"Migration check error (this is normal for new databases): {e}")
+    
     # Create indexes for faster queries
     cursor.execute('''
         CREATE INDEX IF NOT EXISTS idx_exam_session 
