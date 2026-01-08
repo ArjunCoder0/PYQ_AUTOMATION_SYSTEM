@@ -356,7 +356,8 @@ class ZIPProcessor:
             return result['view_link']
             
         except Exception as e:
-            print(f"Error uploading to Drive: {e}")
+            print(f"CRITICAL ERROR UPLOADING TO DRIVE: {e}")
+            # We can't return the error easily without changing signature, so we count on "new_path" being None
             return None
     
     def _cleanup(self, extract_path):
