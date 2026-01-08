@@ -122,15 +122,25 @@ async function handleUpload(event) {
             try {
                 const data = JSON.parse(xhr.responseText);
                 if (data.success) {
+                    // Task completed successfully
+                    // We need to check if we are in the polling phase or initial upload phase
+                    // The initial upload returns success=true directly
+                    // polling returns success=true but data is inside task.result
+
+                    let result = data;
+                    if (data.task && data.task.result) {
+                        result = data.task.result;
+                    }
+
                     showAlert(
-                        `✅ Success! Processed ${data.inserted} papers out of ${data.total_pdfs} PDFs found.`,
+                        `✅ Success! Processed ${result.inserted} papers out of ${result.total_pdfs} PDFs found.`,
                         'success'
                     );
 
                     // Show detailed info
-                    if (data.valid_papers !== data.inserted) {
+                    if (result.valid_papers !== result.inserted) {
                         showAlert(
-                            `ℹ️ Note: ${data.valid_papers} valid engineering papers found, ${data.inserted} successfully inserted into database.`,
+                            `ℹ️ Note: ${result.valid_papers} valid engineering papers found, ${result.inserted} successfully inserted into database.`,
                             'info'
                         );
                     }
@@ -138,7 +148,11 @@ async function handleUpload(event) {
                     // Reset form
                     uploadForm.reset();
                     fileNameDisplay.textContent = 'Click to select ZIP file';
-                    setDefaultYear();
+
+                    // Set default year
+                    const currentYear = new Date().getFullYear();
+                    examYearInput.value = currentYear;
+
                     progressBar.style.width = '0%';
                 } else {
                     showAlert(`❌ Error: ${data.error}`, 'error');
