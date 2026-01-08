@@ -27,7 +27,12 @@ CORS(app)  # Enable CORS for frontend communication
 upload_tasks = {}
 
 # Initialize database on startup
-init_database()
+try:
+    init_database()
+    print("✓ Database initialized successfully")
+except Exception as e:
+    print(f"⚠️ Database initialization error: {e}")
+    print("Continuing without database initialization...")
 
 def allowed_file(filename):
     """Check if file extension is allowed"""
