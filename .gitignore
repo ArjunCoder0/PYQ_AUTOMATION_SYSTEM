@@ -20,6 +20,13 @@ uploads/
 *.zip
 google-credentials.json
 
+# Environment variables and secrets
+.env
+.env.local
+.env.*.local
+*.key
+*.pem
+
 # IDE
 .vscode/
 .idea/

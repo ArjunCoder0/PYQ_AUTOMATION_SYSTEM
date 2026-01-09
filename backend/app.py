@@ -16,12 +16,17 @@ from database import (
     get_branches_by_session, get_subjects, get_paper_details, get_file_by_id
 )
 from zip_processor import ZIPProcessor
+from security import require_auth, add_security_headers, validate_file_upload
+from auth import auth_bp, init_admin_user
 
 # Configure Flask to serve frontend files
 app = Flask(__name__, 
             static_folder='../frontend',
             static_url_path='')
 CORS(app)  # Enable CORS for frontend communication
+
+# Register authentication blueprint
+app.register_blueprint(auth_bp)
 
 # Global task storage
 upload_tasks = {}
@@ -37,6 +42,17 @@ except Exception as e:
 # Create directories after database init
 from config import ensure_directories
 ensure_directories()
+
+# Initialize admin user
+try:
+    init_admin_user()
+except Exception as e:
+    print(f"⚠️ Admin user initialization error: {e}")
+
+# Add security headers to all responses
+@app.after_request
+def apply_security_headers(response):
+    return add_security_headers(response)
 
 def allowed_file(filename):
     """Check if file extension is allowed"""
@@ -96,6 +112,7 @@ def process_zip_background(task_id, zip_path, exam_type, exam_year):
         })
 
 @app.route('/api/admin/upload', methods=['POST'])
+@require_auth
 def admin_upload():
     """
     NEW: Upload ZIP and create job (no extraction, no processing)
@@ -147,6 +164,7 @@ def admin_upload():
         return jsonify({'success': False, 'error': str(e)}), 500
 
 @app.route('/api/admin/fetch-zip', methods=['POST'])
+@require_auth
 def fetch_zip():
     """
     NEW: Fetch ZIP from URL (server-side download)
@@ -240,6 +258,7 @@ def fetch_zip():
         return jsonify({'success': False, 'error': str(e)}), 500
 
 @app.route('/api/admin/process-batch/<int:job_id>', methods=['POST'])
+@require_auth
 def process_batch(job_id):
     """
     Process next batch of PDFs for a job
@@ -262,6 +281,7 @@ def process_batch(job_id):
 
 
 @app.route('/api/admin/recent-job', methods=['GET'])
+@require_auth
 def get_recent_job():
     """Get the most recent upload job"""
     try:
@@ -297,6 +317,7 @@ def get_recent_job():
         return jsonify({'success': False, 'error': str(e)}), 500
 
 @app.route('/api/admin/job-status/<int:job_id>', methods=['GET'])
+@require_auth
 def get_job_status(job_id):
     """Get current status of an upload job"""
     try:
@@ -325,6 +346,7 @@ def get_job_status(job_id):
         return jsonify({'success': False, 'error': str(e)}), 500
 
 @app.route('/api/admin/jobs', methods=['GET'])
+@require_auth
 def get_all_jobs():
     """Get all upload jobs"""
     try:
@@ -484,10 +506,22 @@ def index():
     """Serve student portal"""
     return send_file('../frontend/index.html')
 
-@app.route('/admin.html')
-def admin():
-    """Serve admin panel"""
+# Secret admin routes (non-discoverable)
+@app.route('/internal/uni-pyq-control-83F9/login')
+def admin_login():
+    """Serve admin login page (secret URL)"""
+    return send_file('../frontend/admin_login.html')
+
+@app.route('/internal/uni-pyq-control-83F9/dashboard')
+def admin_dashboard():
+    """Serve admin dashboard (requires authentication)"""
     return send_file('../frontend/admin.html')
+
+# Legacy admin.html route - redirect to secret login
+@app.route('/admin.html')
+def admin_legacy():
+    """Redirect old admin URL to secret login"""
+    return redirect('/internal/uni-pyq-control-83F9/login')
 
 # ==================== HEALTH CHECK ====================
 

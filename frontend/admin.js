@@ -49,7 +49,7 @@ async function loadRecentJob() {
         const url = `${API_BASE_URL}/admin/recent-job`;
         console.log('Fetching from:', url);
 
-        const response = await fetch(url);
+        const response = await Auth.fetch(url);
         console.log('Response status:', response.status);
 
         const data = await response.json();
@@ -132,7 +132,7 @@ async function handleFetchZip(event) {
 
     try {
         // Call fetch-zip endpoint
-        const response = await fetch(`${API_BASE_URL}/admin/fetch-zip`, {
+        const response = await Auth.fetch(`${API_BASE_URL}/admin/fetch-zip`, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json'
@@ -178,7 +178,7 @@ function startStatusPolling(jobId, filename) {
         attempts++;
 
         try {
-            const response = await fetch(`${API_BASE_URL}/admin/job-status/${jobId}`);
+            const response = await Auth.fetch(`${API_BASE_URL}/admin/job-status/${jobId}`);
             const data = await response.json();
 
             downloadText.textContent = `Checking status... (${attempts * 5} seconds elapsed)`;
@@ -239,7 +239,7 @@ async function processSingleBatch() {
     processBatchBtn.textContent = '⏳ Processing...';
 
     try {
-        const response = await fetch(`${API_BASE_URL}/admin/process-batch/${currentJobId}`, {
+        const response = await Auth.fetch(`${API_BASE_URL}/admin/process-batch/${currentJobId}`, {
             method: 'POST'
         });
 
@@ -297,7 +297,7 @@ async function toggleAutoProcess() {
 async function autoProcessLoop() {
     while (isAutoProcessing) {
         try {
-            const response = await fetch(`${API_BASE_URL}/admin/process-batch/${currentJobId}`, {
+            const response = await Auth.fetch(`${API_BASE_URL}/admin/process-batch/${currentJobId}`, {
                 method: 'POST'
             });
 

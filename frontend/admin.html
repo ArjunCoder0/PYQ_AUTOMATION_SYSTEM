@@ -6,17 +6,30 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Admin Panel - PYQ Management System</title>
     <meta name="description" content="Admin panel for fetching and managing engineering question papers">
+    <meta name="robots" content="noindex, nofollow">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="styles.css">
+    <link rel="stylesheet" href="../styles.css">
+    <script src="../auth.js"></script>
 </head>
 
 <body>
     <!-- Header -->
     <header class="header">
-        <h1>🔐 Admin Panel</h1>
-        <p>Fetch and Manage Question Papers</p>
+        <div
+            style="display: flex; justify-content: space-between; align-items: center; max-width: 1200px; margin: 0 auto; width: 100%;">
+            <div>
+                <h1>🔐 Admin Panel</h1>
+                <p>Fetch and Manage Question Papers</p>
+            </div>
+            <div style="display: flex; align-items: center; gap: 1rem;">
+                <span id="adminUsername" style="color: #e2e8f0; font-size: 14px;"></span>
+                <button onclick="Auth.logout()" class="btn btn-secondary" style="padding: 8px 16px; font-size: 14px;">
+                    🚪 Logout
+                </button>
+            </div>
+        </div>
     </header>
 
     <div class="container">
@@ -144,7 +157,22 @@
         </div>
     </div>
 
-    <script src="admin.js"></script>
+    <script>
+        // Require authentication before loading admin panel
+        (async () => {
+            const authenticated = await Auth.requireAuth();
+            if (authenticated) {
+                // Display username
+                const username = Auth.getUsername();
+                document.getElementById('adminUsername').textContent = `👤 ${username}`;
+
+                // Load admin functionality
+                const script = document.createElement('script');
+                script.src = '../admin.js';
+                document.body.appendChild(script);
+            }
+        })();
+    </script>
 </body>
 
 </html>

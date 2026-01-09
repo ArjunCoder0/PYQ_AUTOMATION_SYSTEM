@@ -1,0 +1,300 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin Login</title>
+    <meta name="robots" content="noindex, nofollow">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+
+        .login-container {
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            width: 100%;
+            max-width: 400px;
+            padding: 40px;
+        }
+
+        .login-header {
+            text-align: center;
+            margin-bottom: 32px;
+        }
+
+        .login-header h1 {
+            font-size: 24px;
+            font-weight: 700;
+            color: #1e293b;
+            margin-bottom: 8px;
+        }
+
+        .login-header p {
+            font-size: 14px;
+            color: #64748b;
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        .form-label {
+            display: block;
+            font-size: 14px;
+            font-weight: 500;
+            color: #334155;
+            margin-bottom: 8px;
+        }
+
+        .form-control {
+            width: 100%;
+            padding: 12px 16px;
+            font-size: 14px;
+            border: 2px solid #e2e8f0;
+            border-radius: 8px;
+            transition: all 0.2s;
+            font-family: 'Inter', sans-serif;
+        }
+
+        .form-control:focus {
+            outline: none;
+            border-color: #667eea;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        }
+
+        .btn {
+            width: 100%;
+            padding: 12px 24px;
+            font-size: 14px;
+            font-weight: 600;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.2s;
+            font-family: 'Inter', sans-serif;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+
+        .btn-primary:hover:not(:disabled) {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 20px rgba(102, 126, 234, 0.3);
+        }
+
+        .btn-primary:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+        }
+
+        .alert {
+            padding: 12px 16px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            font-size: 14px;
+            display: none;
+        }
+
+        .alert-error {
+            background: #fee2e2;
+            color: #991b1b;
+            border: 1px solid #fecaca;
+        }
+
+        .alert-info {
+            background: #dbeafe;
+            color: #1e40af;
+            border: 1px solid #bfdbfe;
+        }
+
+        .alert.show {
+            display: block;
+        }
+
+        .attempts-warning {
+            text-align: center;
+            font-size: 12px;
+            color: #dc2626;
+            margin-top: 12px;
+        }
+
+        .hidden {
+            display: none;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="login-container">
+        <div class="login-header">
+            <h1>🔐 Admin Login</h1>
+            <p>Engineering PYQ Management</p>
+        </div>
+
+        <div id="alertBox" class="alert"></div>
+
+        <form id="loginForm">
+            <div class="form-group">
+                <label class="form-label" for="username">Username</label>
+                <input type="text" id="username" class="form-control" autocomplete="username" required>
+            </div>
+
+            <div class="form-group">
+                <label class="form-label" for="password">Password</label>
+                <input type="password" id="password" class="form-control" autocomplete="current-password" required>
+            </div>
+
+            <button type="submit" id="loginBtn" class="btn btn-primary">
+                Login
+            </button>
+
+            <div id="attemptsWarning" class="attempts-warning hidden"></div>
+        </form>
+    </div>
+
+    <script>
+        const API_BASE = window.location.origin;
+        let remainingAttempts = 5;
+
+        function showAlert(message, type = 'error') {
+            const alertBox = document.getElementById('alertBox');
+            alertBox.textContent = message;
+            alertBox.className = `alert alert-${type} show`;
+        }
+
+        function hideAlert() {
+            const alertBox = document.getElementById('alertBox');
+            alertBox.className = 'alert';
+        }
+
+        function updateAttemptsWarning(attempts) {
+            const warning = document.getElementById('attemptsWarning');
+            if (attempts <= 3 && attempts > 0) {
+                warning.textContent = `⚠️ ${attempts} attempt${attempts !== 1 ? 's' : ''} remaining`;
+                warning.classList.remove('hidden');
+            } else {
+                warning.classList.add('hidden');
+            }
+        }
+
+        document.getElementById('loginForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            hideAlert();
+
+            const username = document.getElementById('username').value.trim();
+            const password = document.getElementById('password').value;
+            const loginBtn = document.getElementById('loginBtn');
+
+            if (!username || !password) {
+                showAlert('Please enter both username and password');
+                return;
+            }
+
+            // Disable button during login
+            loginBtn.disabled = true;
+            loginBtn.textContent = 'Logging in...';
+
+            try {
+                const response = await fetch(`${API_BASE}/api/auth/login`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ username, password })
+                });
+
+                const data = await response.json();
+
+                if (response.ok && data.success) {
+                    // Store token in sessionStorage (more secure than localStorage)
+                    sessionStorage.setItem('admin_token', data.token);
+                    sessionStorage.setItem('admin_username', data.username);
+
+                    showAlert('Login successful! Redirecting...', 'info');
+
+                    // Redirect to admin dashboard
+                    setTimeout(() => {
+                        window.location.href = '/internal/uni-pyq-control-83F9/dashboard';
+                    }, 500);
+                } else {
+                    // Login failed
+                    if (response.status === 429) {
+                        showAlert('Too many failed attempts. Please try again later.');
+                        loginBtn.disabled = true;
+                        setTimeout(() => {
+                            loginBtn.disabled = false;
+                            loginBtn.textContent = 'Login';
+                        }, 60000); // 1 minute timeout
+                    } else {
+                        showAlert(data.error || 'Invalid credentials');
+
+                        // Update remaining attempts
+                        if (data.remaining_attempts !== undefined) {
+                            remainingAttempts = data.remaining_attempts;
+                            updateAttemptsWarning(remainingAttempts);
+                        }
+
+                        loginBtn.disabled = false;
+                        loginBtn.textContent = 'Login';
+
+                        // Clear password field
+                        document.getElementById('password').value = '';
+                    }
+                }
+            } catch (error) {
+                console.error('Login error:', error);
+                showAlert('Connection error. Please try again.');
+                loginBtn.disabled = false;
+                loginBtn.textContent = 'Login';
+            }
+        });
+
+        // Check if already logged in
+        window.addEventListener('DOMContentLoaded', async () => {
+            const token = sessionStorage.getItem('admin_token');
+            if (token) {
+                // Verify token is still valid
+                try {
+                    const response = await fetch(`${API_BASE}/api/auth/verify`, {
+                        headers: {
+                            'Authorization': `Bearer ${token}`
+                        }
+                    });
+
+                    if (response.ok) {
+                        // Already logged in, redirect to dashboard
+                        window.location.href = '/internal/uni-pyq-control-83F9/dashboard';
+                    } else {
+                        // Token invalid, clear it
+                        sessionStorage.removeItem('admin_token');
+                        sessionStorage.removeItem('admin_username');
+                    }
+                } catch (error) {
+                    console.error('Token verification error:', error);
+                }
+            }
+        });
+    </script>
+</body>
+
+</html>
