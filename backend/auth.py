@@ -196,6 +196,8 @@ def change_password():
     POST /api/auth/change-password
     Body: { "current_password": "...", "new_password": "..." }
     """
+    global ADMIN_PASSWORD_HASH
+    
     try:
         # Get token from Authorization header
         auth_header = request.headers.get('Authorization')
@@ -229,7 +231,6 @@ def change_password():
             return jsonify({'success': False, 'error': 'Current password is incorrect'}), 401
         
         # Update password
-        global ADMIN_PASSWORD_HASH
         new_hash = hash_password(new_password)
         
         conn = get_db_connection()
