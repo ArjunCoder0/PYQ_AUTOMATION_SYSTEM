@@ -411,6 +411,23 @@ body {
         font-size: 1rem;
     }
 
+    /* Admin header responsive */
+    .header>div {
+        flex-direction: column !important;
+        gap: 1rem !important;
+    }
+
+    .header>div>div:last-child {
+        flex-direction: column !important;
+        width: 100%;
+    }
+
+    .header>div>div:last-child span,
+    .header>div>div:last-child button {
+        width: 100%;
+        text-align: center;
+    }
+
     .card {
         padding: var(--spacing-md);
     }
@@ -441,6 +458,10 @@ body {
         padding: var(--spacing-lg) var(--spacing-sm);
     }
 
+    .header h1 {
+        font-size: 1.5rem;
+    }
+
     .btn-grid {
         grid-template-columns: repeat(2, 1fr);
         gap: var(--spacing-xs);
@@ -449,4 +470,57 @@ body {
     .semester-btn {
         font-size: 1.2rem;
     }
+
+    /* Smaller buttons on mobile */
+    .btn {
+        padding: 0.75rem 1.25rem;
+        font-size: 0.9rem;
+    }
+
+    /* Form controls */
+    .form-control {
+        padding: 0.65rem 0.85rem;
+        font-size: 0.95rem;
+    }
+}
+
+/* Additional utility classes */
+.btn-secondary {
+    background: linear-gradient(135deg, #64748b, #475569);
+    color: white;
+    box-shadow: var(--shadow-md);
+}
+
+.btn-secondary:hover:not(:disabled) {
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-lg);
+}
+
+.btn-danger {
+    background: linear-gradient(135deg, var(--danger-color), #dc2626);
+    color: white;
+    box-shadow: var(--shadow-md);
+}
+
+.btn-danger:hover:not(:disabled) {
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-lg);
+}
+
+/* Processing log */
+.processing-log {
+    background: #f8fafc;
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-md);
+    padding: var(--spacing-md);
+    max-height: 300px;
+    overflow-y: auto;
+    font-family: 'Courier New', monospace;
+    font-size: 0.85rem;
+    line-height: 1.6;
+}
+
+.processing-log div {
+    margin-bottom: 0.25rem;
+    color: var(--text-secondary);
 }
