@@ -16,17 +16,20 @@
 
 <body>
     <!-- Header -->
-    <header class="header">
-        <div
-            style="display: flex; justify-content: space-between; align-items: center; max-width: 1200px; margin: 0 auto; width: 100%;">
-            <div>
+    <header class="header admin-header">
+        <div class="admin-header-content">
+            <div class="admin-title-section">
                 <h1>🔐 Admin Panel</h1>
                 <p>Fetch and Manage Question Papers</p>
             </div>
-            <div style="display: flex; align-items: center; gap: 1rem;">
-                <span id="adminUsername" style="color: #e2e8f0; font-size: 14px;"></span>
-                <button onclick="Auth.logout()" class="btn btn-secondary" style="padding: 8px 16px; font-size: 14px;">
-                    🚪 Logout
+            <div class="admin-user-section">
+                <div class="admin-username" id="adminUsername">
+                    <span class="user-icon">👤</span>
+                    <span class="username-text">Loading...</span>
+                </div>
+                <button onclick="Auth.logout()" class="btn logout-btn">
+                    <span class="logout-icon">🚪</span>
+                    <span class="logout-text">Logout</span>
                 </button>
             </div>
         </div>
@@ -164,7 +167,10 @@
             if (authenticated) {
                 // Display username
                 const username = Auth.getUsername();
-                document.getElementById('adminUsername').textContent = `👤 ${username}`;
+                const usernameElement = document.querySelector('.username-text');
+                if (usernameElement) {
+                    usernameElement.textContent = username || 'admin';
+                }
 
                 // Load admin functionality
                 const script = document.createElement('script');
