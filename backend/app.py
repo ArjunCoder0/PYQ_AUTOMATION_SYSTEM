@@ -193,10 +193,7 @@ def fetch_zip():
         filename = f"{exam_type}_{exam_year}.zip"
         
         # Create job record immediately with status FETCHING
-        job_id = create_upload_job(filename, '', exam_type, int(exam_year), 0, zip_url=zip_url)
-        
-        # Update job status to FETCHING
-        update_job_progress(job_id, 0, 'FETCHING')
+        job_id = create_upload_job(filename, '', exam_type, int(exam_year), 0, zip_url=zip_url, status='FETCHING')
         
         # Download ZIP in background thread
         def download_in_background():

@@ -235,7 +235,7 @@ def get_file_by_id(file_id):
 
 # ==================== UPLOAD JOBS FUNCTIONS ====================
 
-def create_upload_job(filename, zip_path, exam_type, exam_year, total_pdfs, zip_url=None):
+def create_upload_job(filename, zip_path, exam_type, exam_year, total_pdfs, zip_url=None, status='UPLOADED'):
     """Create a new upload job record"""
     session = Session()
     try:
@@ -246,7 +246,7 @@ def create_upload_job(filename, zip_path, exam_type, exam_year, total_pdfs, zip_
             exam_type=exam_type,
             exam_year=exam_year,
             total_pdfs=total_pdfs,
-            status='UPLOADED'
+            status=status
         )
         session.add(job)
         session.commit()

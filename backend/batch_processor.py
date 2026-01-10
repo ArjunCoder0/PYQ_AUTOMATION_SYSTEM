@@ -17,6 +17,42 @@ class BatchProcessor:
         if not self.job:
             raise ValueError(f"Job {job_id} not found")
         
+        self.processor = None
+        
+        # Check if ZIP exists
+        zip_path = self.job['zip_path']
+        if not zip_path or not os.path.exists(zip_path):
+            print(f"⚠️ ZIP not found at '{zip_path}'. Attempting to re-download...")
+            
+            if self.job.get('zip_url'):
+                try:
+                    from zip_fetcher import fetch_zip_from_url
+                    from database import Session, UploadJob
+                    
+                    filename = self.job['filename']
+                    print(f"⬇️ Re-downloading {filename} from {self.job['zip_url']}...")
+                    zip_path, _ = fetch_zip_from_url(self.job['zip_url'], filename)
+                    
+                    # Update job in DB with new path
+                    session = Session()
+                    try:
+                        job = session.query(UploadJob).filter(UploadJob.id == self.job_id).first()
+                        if job:
+                            job.zip_path = zip_path
+                            session.commit()
+                    finally:
+                        session.close()
+                    
+                    # Update local job reference
+                    self.job['zip_path'] = zip_path
+                    print(f"✓ Re-download successful: {zip_path}")
+                    
+                except Exception as e:
+                    print(f"❌ Re-download failed: {e}")
+                    raise ValueError(f"ZIP file missing and re-download failed: {e}")
+            else:
+                raise ValueError("ZIP file missing and no URL provided for re-download")
+                
         self.processor = ZIPProcessor(
             self.job['zip_path'],
             self.job['exam_type'],
