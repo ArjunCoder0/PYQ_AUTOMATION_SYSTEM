@@ -1,249 +1,330 @@
 """
-Database initialization and helper functions
+Database initialization and helper functions using SQLAlchemy
+Supports both PostgreSQL (production) and SQLite (development)
 """
-import sqlite3
+import os
 from datetime import datetime
-from config import DATABASE_PATH
+from sqlalchemy import create_engine, Column, Integer, String, Text, DateTime, Index
+from sqlalchemy.ext.declarative import declarative_base
+from sqlalchemy.orm import sessionmaker, scoped_session
+from sqlalchemy.sql import func
 
-def get_db_connection():
-    """Create and return a database connection"""
-    conn = sqlite3.connect(DATABASE_PATH)
-    conn.row_factory = sqlite3.Row  # Return rows as dictionaries
-    return conn
+# Detect database URL from environment
+DATABASE_URL = os.getenv('DATABASE_URL')
+
+if DATABASE_URL:
+    # Production: PostgreSQL on Railway
+    # Normalize postgres:// to postgresql:// for SQLAlchemy compatibility
+    if DATABASE_URL.startswith('postgres://'):
+        DATABASE_URL = DATABASE_URL.replace('postgres://', 'postgresql://', 1)
+    print(f"✓ Using PostgreSQL (production)")
+else:
+    # Development: SQLite locally
+    from config import DATABASE_PATH
+    DATABASE_URL = f'sqlite:///{DATABASE_PATH}'
+    print(f"✓ Using SQLite (local development)")
+
+# Create engine
+engine = create_engine(
+    DATABASE_URL,
+    echo=False,  # Set to True for SQL debugging
+    pool_pre_ping=True,  # Verify connections before using
+)
+
+# Create session factory
+Session = scoped_session(sessionmaker(bind=engine))
+
+# Base class for all models
+Base = declarative_base()
+
+# ==================== MODELS ====================
+
+class PyqFile(Base):
+    """Model for PYQ file metadata"""
+    __tablename__ = 'pyq_files'
+    
+    id = Column(Integer, primary_key=True)
+    degree = Column(String(50), nullable=False)
+    branch = Column(String(50), nullable=False)
+    semester = Column(Integer, nullable=False)
+    subject_code = Column(String(50), nullable=False)
+    subject_name = Column(String(255), nullable=False)
+    exam_type = Column(String(50), nullable=False)
+    exam_year = Column(Integer, nullable=False)
+    file_path = Column(Text, nullable=False)
+    created_at = Column(DateTime, default=func.now())
+    
+    # Indexes for faster queries
+    __table_args__ = (
+        Index('idx_exam_session', 'exam_type', 'exam_year'),
+        Index('idx_branch_semester', 'branch', 'semester'),
+    )
+
+class UploadJob(Base):
+    """Model for upload job tracking"""
+    __tablename__ = 'upload_jobs'
+    
+    id = Column(Integer, primary_key=True)
+    filename = Column(String(255), nullable=False)
+    zip_path = Column(Text, nullable=False)
+    zip_url = Column(Text, nullable=True)
+    extract_path = Column(Text, nullable=True)
+    exam_type = Column(String(50), nullable=False)
+    exam_year = Column(Integer, nullable=False)
+    total_pdfs = Column(Integer, default=0)
+    processed_pdfs = Column(Integer, default=0)
+    status = Column(String(50), default='UPLOADED')
+    created_at = Column(DateTime, default=func.now())
+    updated_at = Column(DateTime, default=func.now(), onupdate=func.now())
+
+# ==================== INITIALIZATION ====================
 
 def init_database():
-    """Initialize database and create tables if they don't exist"""
-    conn = get_db_connection()
-    cursor = conn.cursor()
-    
-    # Create pyq_files table
-    cursor.execute('''
-        CREATE TABLE IF NOT EXISTS pyq_files (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            degree TEXT NOT NULL,
-            branch TEXT NOT NULL,
-            semester INTEGER NOT NULL,
-            subject_code TEXT NOT NULL,
-            subject_name TEXT NOT NULL,
-            exam_type TEXT NOT NULL,
-            exam_year INTEGER NOT NULL,
-            file_path TEXT NOT NULL,
-            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-        )
-    ''')
-    
-    # Create upload_jobs table for chunked processing
-    cursor.execute('''
-        CREATE TABLE IF NOT EXISTS upload_jobs (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            filename TEXT NOT NULL,
-            zip_path TEXT NOT NULL,
-            zip_url TEXT,
-            extract_path TEXT,
-            exam_type TEXT NOT NULL,
-            exam_year INTEGER NOT NULL,
-            total_pdfs INTEGER DEFAULT 0,
-            processed_pdfs INTEGER DEFAULT 0,
-            status TEXT DEFAULT 'UPLOADED',
-            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-        )
-    ''')
-    
-    # Migration: Add zip_url column if it doesn't exist in existing databases
+    """Initialize database and create all tables"""
     try:
-        cursor.execute("PRAGMA table_info(upload_jobs)")
-        columns = [row[1] for row in cursor.fetchall()]
-        
-        if 'zip_url' not in columns:
-            print("Running migration: Adding zip_url column to upload_jobs...")
-            cursor.execute('ALTER TABLE upload_jobs ADD COLUMN zip_url TEXT')
-            print("✓ Migration complete: zip_url column added")
+        Base.metadata.create_all(engine)
+        print("✓ Database tables created/verified successfully")
     except Exception as e:
-        print(f"Migration check error (this is normal for new databases): {e}")
-    
-    # Create indexes for faster queries
-    cursor.execute('''
-        CREATE INDEX IF NOT EXISTS idx_exam_session 
-        ON pyq_files(exam_type, exam_year)
-    ''')
-    
-    cursor.execute('''
-        CREATE INDEX IF NOT EXISTS idx_branch_semester 
-        ON pyq_files(branch, semester)
-    ''')
-    
-    conn.commit()
-    conn.close()
-    print("Database initialized successfully!")
+        print(f"⚠️ Database initialization error: {e}")
+        raise
+
+# ==================== HELPER FUNCTIONS ====================
+
+def get_db_connection():
+    """
+    Get database session (for backward compatibility)
+    Returns a SQLAlchemy session instead of raw connection
+    """
+    return Session()
+
+# ==================== PYQ FILE FUNCTIONS ====================
 
 def insert_pyq_file(data):
     """Insert a new PYQ file record"""
-    conn = get_db_connection()
-    cursor = conn.cursor()
-    
-    cursor.execute('''
-        INSERT INTO pyq_files 
-        (degree, branch, semester, subject_code, subject_name, exam_type, exam_year, file_path)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-    ''', (
-        data['degree'],
-        data['branch'],
-        data['semester'],
-        data['subject_code'],
-        data['subject_name'],
-        data['exam_type'],
-        data['exam_year'],
-        data['file_path']
-    ))
-    
-    conn.commit()
-    file_id = cursor.lastrowid
-    conn.close()
-    return file_id
+    session = Session()
+    try:
+        pyq_file = PyqFile(
+            degree=data['degree'],
+            branch=data['branch'],
+            semester=data['semester'],
+            subject_code=data['subject_code'],
+            subject_name=data['subject_name'],
+            exam_type=data['exam_type'],
+            exam_year=data['exam_year'],
+            file_path=data['file_path']
+        )
+        session.add(pyq_file)
+        session.commit()
+        file_id = pyq_file.id
+        return file_id
+    except Exception as e:
+        session.rollback()
+        raise e
+    finally:
+        session.close()
 
 def get_exam_sessions():
     """Get all unique exam sessions (type + year)"""
-    conn = get_db_connection()
-    cursor = conn.cursor()
-    
-    cursor.execute('''
-        SELECT DISTINCT exam_type, exam_year 
-        FROM pyq_files 
-        ORDER BY exam_year DESC, exam_type
-    ''')
-    
-    sessions = [dict(row) for row in cursor.fetchall()]
-    conn.close()
-    return sessions
+    session = Session()
+    try:
+        results = session.query(
+            PyqFile.exam_type,
+            PyqFile.exam_year
+        ).distinct().order_by(
+            PyqFile.exam_year.desc(),
+            PyqFile.exam_type
+        ).all()
+        
+        return [{'exam_type': r.exam_type, 'exam_year': r.exam_year} for r in results]
+    finally:
+        session.close()
 
 def get_branches_by_session(exam_type, exam_year):
     """Get all branches for a specific exam session"""
-    conn = get_db_connection()
-    cursor = conn.cursor()
-    
-    cursor.execute('''
-        SELECT DISTINCT branch 
-        FROM pyq_files 
-        WHERE exam_type = ? AND exam_year = ?
-        ORDER BY branch
-    ''', (exam_type, exam_year))
-    
-    branches = [row['branch'] for row in cursor.fetchall()]
-    conn.close()
-    return branches
+    session = Session()
+    try:
+        results = session.query(PyqFile.branch).filter(
+            PyqFile.exam_type == exam_type,
+            PyqFile.exam_year == exam_year
+        ).distinct().order_by(PyqFile.branch).all()
+        
+        return [r.branch for r in results]
+    finally:
+        session.close()
 
 def get_subjects(exam_type, exam_year, branch, semester):
     """Get all subjects for specific filters"""
-    conn = get_db_connection()
-    cursor = conn.cursor()
-    
-    cursor.execute('''
-        SELECT DISTINCT subject_code, subject_name 
-        FROM pyq_files 
-        WHERE exam_type = ? AND exam_year = ? AND branch = ? AND semester = ?
-        ORDER BY subject_code
-    ''', (exam_type, exam_year, branch, semester))
-    
-    subjects = [dict(row) for row in cursor.fetchall()]
-    conn.close()
-    return subjects
+    session = Session()
+    try:
+        results = session.query(
+            PyqFile.subject_code,
+            PyqFile.subject_name
+        ).filter(
+            PyqFile.exam_type == exam_type,
+            PyqFile.exam_year == exam_year,
+            PyqFile.branch == branch,
+            PyqFile.semester == semester
+        ).distinct().order_by(PyqFile.subject_code).all()
+        
+        return [{'subject_code': r.subject_code, 'subject_name': r.subject_name} for r in results]
+    finally:
+        session.close()
 
 def get_paper_details(exam_type, exam_year, branch, semester, subject_code):
     """Get paper details for specific subject"""
-    conn = get_db_connection()
-    cursor = conn.cursor()
-    
-    cursor.execute('''
-        SELECT * FROM pyq_files 
-        WHERE exam_type = ? AND exam_year = ? AND branch = ? 
-        AND semester = ? AND subject_code = ?
-        LIMIT 1
-    ''', (exam_type, exam_year, branch, semester, subject_code))
-    
-    paper = cursor.fetchone()
-    conn.close()
-    return dict(paper) if paper else None
+    session = Session()
+    try:
+        paper = session.query(PyqFile).filter(
+            PyqFile.exam_type == exam_type,
+            PyqFile.exam_year == exam_year,
+            PyqFile.branch == branch,
+            PyqFile.semester == semester,
+            PyqFile.subject_code == subject_code
+        ).first()
+        
+        if paper:
+            return {
+                'id': paper.id,
+                'degree': paper.degree,
+                'branch': paper.branch,
+                'semester': paper.semester,
+                'subject_code': paper.subject_code,
+                'subject_name': paper.subject_name,
+                'exam_type': paper.exam_type,
+                'exam_year': paper.exam_year,
+                'file_path': paper.file_path,
+                'created_at': paper.created_at
+            }
+        return None
+    finally:
+        session.close()
 
 def get_file_by_id(file_id):
     """Get file details by ID"""
-    conn = get_db_connection()
-    cursor = conn.cursor()
-    
-    cursor.execute('SELECT * FROM pyq_files WHERE id = ?', (file_id,))
-    file_data = cursor.fetchone()
-    conn.close()
-    return dict(file_data) if file_data else None
+    session = Session()
+    try:
+        file_data = session.query(PyqFile).filter(PyqFile.id == file_id).first()
+        
+        if file_data:
+            return {
+                'id': file_data.id,
+                'degree': file_data.degree,
+                'branch': file_data.branch,
+                'semester': file_data.semester,
+                'subject_code': file_data.subject_code,
+                'subject_name': file_data.subject_name,
+                'exam_type': file_data.exam_type,
+                'exam_year': file_data.exam_year,
+                'file_path': file_data.file_path,
+                'created_at': file_data.created_at
+            }
+        return None
+    finally:
+        session.close()
 
 # ==================== UPLOAD JOBS FUNCTIONS ====================
 
 def create_upload_job(filename, zip_path, exam_type, exam_year, total_pdfs, zip_url=None):
     """Create a new upload job record"""
-    conn = get_db_connection()
-    cursor = conn.cursor()
-    
-    cursor.execute('''
-        INSERT INTO upload_jobs 
-        (filename, zip_path, zip_url, exam_type, exam_year, total_pdfs, status)
-        VALUES (?, ?, ?, ?, ?, ?, 'UPLOADED')
-    ''', (filename, zip_path, zip_url, exam_type, exam_year, total_pdfs))
-    
-    conn.commit()
-    job_id = cursor.lastrowid
-    conn.close()
-    return job_id
+    session = Session()
+    try:
+        job = UploadJob(
+            filename=filename,
+            zip_path=zip_path,
+            zip_url=zip_url,
+            exam_type=exam_type,
+            exam_year=exam_year,
+            total_pdfs=total_pdfs,
+            status='UPLOADED'
+        )
+        session.add(job)
+        session.commit()
+        job_id = job.id
+        return job_id
+    except Exception as e:
+        session.rollback()
+        raise e
+    finally:
+        session.close()
 
 def get_upload_job(job_id):
     """Get upload job details by ID"""
-    conn = get_db_connection()
-    cursor = conn.cursor()
-    
-    cursor.execute('SELECT * FROM upload_jobs WHERE id = ?', (job_id,))
-    job = cursor.fetchone()
-    conn.close()
-    return dict(job) if job else None
+    session = Session()
+    try:
+        job = session.query(UploadJob).filter(UploadJob.id == job_id).first()
+        
+        if job:
+            return {
+                'id': job.id,
+                'filename': job.filename,
+                'zip_path': job.zip_path,
+                'zip_url': job.zip_url,
+                'extract_path': job.extract_path,
+                'exam_type': job.exam_type,
+                'exam_year': job.exam_year,
+                'total_pdfs': job.total_pdfs,
+                'processed_pdfs': job.processed_pdfs,
+                'status': job.status,
+                'created_at': job.created_at,
+                'updated_at': job.updated_at
+            }
+        return None
+    finally:
+        session.close()
 
 def update_job_progress(job_id, processed_pdfs, status='PROCESSING'):
     """Update job progress"""
-    conn = get_db_connection()
-    cursor = conn.cursor()
-    
-    cursor.execute('''
-        UPDATE upload_jobs 
-        SET processed_pdfs = ?, status = ?, updated_at = CURRENT_TIMESTAMP
-        WHERE id = ?
-    ''', (processed_pdfs, status, job_id))
-    
-    conn.commit()
-    conn.close()
+    session = Session()
+    try:
+        job = session.query(UploadJob).filter(UploadJob.id == job_id).first()
+        if job:
+            job.processed_pdfs = processed_pdfs
+            job.status = status
+            job.updated_at = func.now()
+            session.commit()
+    except Exception as e:
+        session.rollback()
+        raise e
+    finally:
+        session.close()
 
 def update_job_extract_path(job_id, extract_path):
     """Update job extract path"""
-    conn = get_db_connection()
-    cursor = conn.cursor()
-    
-    cursor.execute('''
-        UPDATE upload_jobs 
-        SET extract_path = ?, updated_at = CURRENT_TIMESTAMP
-        WHERE id = ?
-    ''', (extract_path, job_id))
-    
-    conn.commit()
-    conn.close()
+    session = Session()
+    try:
+        job = session.query(UploadJob).filter(UploadJob.id == job_id).first()
+        if job:
+            job.extract_path = extract_path
+            job.updated_at = func.now()
+            session.commit()
+    except Exception as e:
+        session.rollback()
+        raise e
+    finally:
+        session.close()
 
 def get_all_upload_jobs():
     """Get all upload jobs ordered by creation date"""
-    conn = get_db_connection()
-    cursor = conn.cursor()
-    
-    cursor.execute('''
-        SELECT * FROM upload_jobs 
-        ORDER BY created_at DESC
-    ''')
-    
-    jobs = [dict(row) for row in cursor.fetchall()]
-    conn.close()
-    return jobs
+    session = Session()
+    try:
+        jobs = session.query(UploadJob).order_by(UploadJob.created_at.desc()).all()
+        
+        return [{
+            'id': job.id,
+            'filename': job.filename,
+            'zip_path': job.zip_path,
+            'zip_url': job.zip_url,
+            'extract_path': job.extract_path,
+            'exam_type': job.exam_type,
+            'exam_year': job.exam_year,
+            'total_pdfs': job.total_pdfs,
+            'processed_pdfs': job.processed_pdfs,
+            'status': job.status,
+            'created_at': job.created_at,
+            'updated_at': job.updated_at
+        } for job in jobs]
+    finally:
+        session.close()
 
 if __name__ == '__main__':
     # Initialize database when run directly
