@@ -234,7 +234,7 @@
 
                     // Redirect to admin dashboard
                     setTimeout(() => {
-                        window.location.href = '/internal/uni-pyq-control-83F9/dashboard';
+                        window.location.href = '/internal/dashboard';
                     }, 500);
                 } else {
                     // Login failed
@@ -283,7 +283,7 @@
 
                     if (response.ok) {
                         // Already logged in, redirect to dashboard
-                        window.location.href = '/internal/uni-pyq-control-83F9/dashboard';
+                        window.location.href = '/internal/dashboard';
                     } else {
                         // Token invalid, clear it
                         sessionStorage.removeItem('admin_token');
