@@ -35,12 +35,10 @@ let currentJobId = null;
 let isAutoProcessing = false;
 let statusPollInterval = null;
 
-// Initialize
-document.addEventListener('DOMContentLoaded', () => {
-    setupEventListeners();
-    setDefaultYear();
-    loadRecentJob(); // Auto-load most recent job if exists
-});
+// Initialize immediately (script is loaded after DOM is ready)
+setupEventListeners();
+setDefaultYear();
+loadRecentJob(); // Auto-load most recent job if exists
 
 // Load most recent job
 async function loadRecentJob() {
