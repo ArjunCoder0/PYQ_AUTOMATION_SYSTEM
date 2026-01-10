@@ -487,13 +487,13 @@ def index():
     """Serve student portal"""
     return send_file('../frontend/index.html')
 
-# Secret admin routes (non-discoverable)
-@app.route('/internal/uni-pyq-control-83F9/login')
+# Secret admin routes (non-discoverable - now simplified)
+@app.route('/internal/login')
 def admin_login():
-    """Serve admin login page (secret URL)"""
+    """Serve admin login page"""
     return send_file('../frontend/admin_login.html')
 
-@app.route('/internal/uni-pyq-control-83F9/dashboard')
+@app.route('/internal/dashboard')
 def admin_dashboard():
     """Serve admin dashboard (requires authentication)"""
     return send_file('../frontend/admin.html')
@@ -501,8 +501,8 @@ def admin_dashboard():
 # Legacy admin.html route - redirect to secret login
 @app.route('/admin.html')
 def admin_legacy():
-    """Redirect old admin URL to secret login"""
-    return redirect('/internal/uni-pyq-control-83F9/login')
+    """Redirect old admin URL to login"""
+    return redirect('/internal/login')
 
 # ==================== HEALTH CHECK ====================
 

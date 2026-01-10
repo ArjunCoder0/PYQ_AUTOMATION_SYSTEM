@@ -78,7 +78,7 @@ const Auth = {
         this.clearAuth();
 
         // Redirect to login
-        window.location.href = '/internal/uni-pyq-control-83F9/login';
+        window.location.href = '/internal/login';
     },
 
     // Make authenticated API request
@@ -104,7 +104,7 @@ const Auth = {
         if (response.status === 401) {
             // Token expired or invalid
             this.clearAuth();
-            window.location.href = '/internal/uni-pyq-control-83F9/login';
+            window.location.href = '/internal/login';
             throw new Error('Session expired');
         }
 
@@ -114,7 +114,7 @@ const Auth = {
     // Require authentication (call on page load)
     async requireAuth() {
         if (!this.isAuthenticated()) {
-            window.location.href = '/internal/uni-pyq-control-83F9/login';
+            window.location.href = '/internal/login';
             return false;
         }
 
@@ -122,7 +122,7 @@ const Auth = {
         const valid = await this.verifyToken();
         if (!valid) {
             this.clearAuth();
-            window.location.href = '/internal/uni-pyq-control-83F9/login';
+            window.location.href = '/internal/login';
             return false;
         }
 
@@ -140,7 +140,7 @@ function startSessionMonitor() {
             if (!valid) {
                 alert('Your session has expired. Please log in again.');
                 Auth.clearAuth();
-                window.location.href = '/internal/uni-pyq-control-83F9/login';
+                window.location.href = '/internal/login';
             }
         }
     }, SESSION_CHECK_INTERVAL);
