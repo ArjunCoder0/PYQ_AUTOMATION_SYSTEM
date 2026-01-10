@@ -242,7 +242,6 @@ def change_password():
         finally:
             session.close()
         
-        global ADMIN_PASSWORD_HASH
         ADMIN_PASSWORD_HASH = new_hash
         
         return jsonify({
