@@ -196,12 +196,7 @@ def fetch_zip():
         job_id = create_upload_job(filename, '', exam_type, int(exam_year), 0, zip_url=zip_url)
         
         # Update job status to FETCHING
-        from database import get_db_connection
-        conn = get_db_connection()
-        cursor = conn.cursor()
-        cursor.execute('UPDATE upload_jobs SET status = ? WHERE id = ?', ('FETCHING', job_id))
-        conn.commit()
-        conn.close()
+        update_job_progress(job_id, 0, 'FETCHING')
         
         # Download ZIP in background thread
         def download_in_background():
@@ -213,31 +208,27 @@ def fetch_zip():
                 if file_size > MAX_FILE_SIZE:
                     os.remove(zip_path)
                     # Update job status to FAILED
-                    conn = get_db_connection()
-                    cursor = conn.cursor()
-                    cursor.execute('UPDATE upload_jobs SET status = ? WHERE id = ?', ('FAILED', job_id))
-                    conn.commit()
-                    conn.close()
+                    update_job_progress(job_id, 0, 'FAILED')
                     print(f"Job {job_id} failed: File too large")
                     return
                 
                 # Update job with zip_path and status UPLOADED
-                conn = get_db_connection()
-                cursor = conn.cursor()
-                cursor.execute('UPDATE upload_jobs SET zip_path = ?, status = ? WHERE id = ?', 
-                             (zip_path, 'UPLOADED', job_id))
-                conn.commit()
-                conn.close()
+                from database import Session, UploadJob
+                session = Session()
+                try:
+                    job = session.query(UploadJob).filter(UploadJob.id == job_id).first()
+                    if job:
+                        job.zip_path = zip_path
+                        job.status = 'UPLOADED'
+                        session.commit()
+                finally:
+                    session.close()
                 print(f"Job {job_id} download complete: {file_size / (1024*1024):.2f} MB")
                 
             except Exception as e:
                 print(f"Background download failed for job {job_id}: {e}")
                 # Update job status to FAILED
-                conn = get_db_connection()
-                cursor = conn.cursor()
-                cursor.execute('UPDATE upload_jobs SET status = ? WHERE id = ?', ('FAILED', job_id))
-                conn.commit()
-                conn.close()
+                update_job_progress(job_id, 0, 'FAILED')
         
         # Start background thread
         thread = threading.Thread(target=download_in_background)
@@ -285,33 +276,26 @@ def process_batch(job_id):
 def get_recent_job():
     """Get the most recent upload job"""
     try:
-        from database import get_db_connection
+        from database import Session, UploadJob
+        session = Session()
+        job = None
+        try:
+            job = session.query(UploadJob).order_by(UploadJob.created_at.desc()).first()
+            if job:
+                return jsonify({
+                    'success': True,
+                    'job': {
+                        'id': job.id,
+                        'filename': job.filename,
+                        'status': job.status,
+                        'total_pdfs': job.total_pdfs,
+                        'processed_pdfs': job.processed_pdfs
+                    }
+                })
+        finally:
+            session.close()
         
-        conn = get_db_connection()
-        cursor = conn.cursor()
-        cursor.execute('''
-            SELECT id, filename, status, total_pdfs, processed_pdfs 
-            FROM upload_jobs 
-            ORDER BY created_at DESC 
-            LIMIT 1
-        ''')
-        
-        row = cursor.fetchone()
-        conn.close()
-        
-        if row:
-            return jsonify({
-                'success': True,
-                'job': {
-                    'id': row[0],
-                    'filename': row[1],
-                    'status': row[2],
-                    'total_pdfs': row[3],
-                    'processed_pdfs': row[4]
-                }
-            })
-        else:
-            return jsonify({'success': False, 'message': 'No jobs found'})
+        return jsonify({'success': False, 'message': 'No recent jobs'})
             
     except Exception as e:
         return jsonify({'success': False, 'error': str(e)}), 500

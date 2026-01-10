@@ -40,12 +40,15 @@ class BatchProcessor:
         
         # Also update total_pdfs if it was 0 (uploaded without extraction)
         if self.job['total_pdfs'] == 0:
-            from database import get_db_connection
-            conn = get_db_connection()
-            cursor = conn.cursor()
-            cursor.execute('UPDATE upload_jobs SET total_pdfs = ? WHERE id = ?', (total_pdfs, self.job_id))
-            conn.commit()
-            conn.close()
+            from database import Session, UploadJob
+            session = Session()
+            try:
+                job = session.query(UploadJob).filter(UploadJob.id == self.job_id).first()
+                if job:
+                    job.total_pdfs = total_pdfs
+                    session.commit()
+            finally:
+                session.close()
         
         # Update job data
         self.job['extract_path'] = extract_path
