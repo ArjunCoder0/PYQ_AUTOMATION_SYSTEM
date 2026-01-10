@@ -77,6 +77,17 @@ class UploadJob(Base):
     created_at = Column(DateTime, default=func.now())
     updated_at = Column(DateTime, default=func.now(), onupdate=func.now())
 
+class AdminUser(Base):
+    """Model for admin user authentication"""
+    __tablename__ = 'admin_users'
+    
+    id = Column(Integer, primary_key=True)
+    username = Column(String(50), unique=True, nullable=False)
+    password_hash = Column(String(255), nullable=False)
+    created_at = Column(DateTime, default=func.now())
+    last_login = Column(DateTime, nullable=True)
+
+
 # ==================== INITIALIZATION ====================
 
 def init_database():
